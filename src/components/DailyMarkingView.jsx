@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
 import { UserCheck, ListOrdered, Info, CheckCircle } from 'lucide-react';
 
-export const DailyMarkingView = ({ students, setStudents, onSubmissionSuccess, attendanceHistory, directAccess }) => {
-  const [selectedClass, setSelectedClass] = useState('K12AIDHA');
+export const DailyMarkingView = ({
+  students,
+  setStudents,
+  onSubmissionSuccess,
+  attendanceHistory,
+  directAccess,
+  defaultClass = 'K12AIDHA',
+  classList = ['K12AIDHA'],
+  title = 'Daily Attendance Marking'
+}) => {
+  const [selectedClass, setSelectedClass] = useState(defaultClass);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const classList = ['K12AIDHA'];
   const today = new Date().toISOString().split('T')[0];
 
   const handleStatusChange = (studentId) => {
@@ -60,7 +68,7 @@ export const DailyMarkingView = ({ students, setStudents, onSubmissionSuccess, a
   return (
     <div className="space-y-6 p-4 md:p-8">
       <h2 className="text-3xl font-extrabold text-gray-900 mb-6 flex items-center">
-        <UserCheck className="w-7 h-7 mr-2 text-pink-600" /> Daily Attendance Marking
+        <UserCheck className="w-7 h-7 mr-2 text-pink-600" /> {title}
       </h2>
 
       {/* Class Selection & Date */}

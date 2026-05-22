@@ -13,6 +13,7 @@ import { ParentDetailsView } from './components/ParentDetailsView';
 import { StudentInfoView } from './components/StudentInfoView';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { studentInfoData as defaultStudentInfoData } from './data/studentInfoData';
+import { crtStudentData as defaultCrtStudentData } from './data/crtStudentData';
 
 // Students will be loaded from the database via useLocalStorage sync
 
@@ -32,6 +33,10 @@ const App = () => {
 
   const [attendanceHistory, setAttendanceHistory] = useLocalStorage('attendanceHistory', {});
   const [lastSubmittedReport, setLastSubmittedReport] = useLocalStorage('lastSubmittedReport', null);
+
+  const [crtStudents, setCrtStudents] = useLocalStorage('crtStudents', defaultCrtStudentData);
+  const [crtAttendanceHistory, setCrtAttendanceHistory] = useLocalStorage('crtAttendanceHistory', {});
+  const [crtLastSubmittedReport, setCrtLastSubmittedReport] = useLocalStorage('crtLastSubmittedReport', null);
 
   const [classInfo, setClassInfo] = useLocalStorage('classInfo', {
     name: 'K12AIDHA',
@@ -63,6 +68,8 @@ const App = () => {
   const clearAttendanceHistory = () => {
     setAttendanceHistory({});
     setLastSubmittedReport(null);
+    setCrtAttendanceHistory({});
+    setCrtLastSubmittedReport(null);
     alert('Attendance history has been cleared.');
   };
 
@@ -98,6 +105,29 @@ const App = () => {
   const handleSelectReport = (report) => {
     setLastSubmittedReport(report);
     setCurrentView('printReport');
+  };
+
+  const handleCrtSubmissionSuccess = (reportData) => {
+    setCrtAttendanceHistory(prevHistory => {
+      const dateKey = reportData.date;
+      return {
+        ...prevHistory,
+        [dateKey]: [...(prevHistory[dateKey] || []), reportData]
+      };
+    });
+    setCrtLastSubmittedReport(reportData);
+    setCurrentView('crtPrintReport');
+  };
+
+  const handleCrtNewMarking = () => {
+    setCrtLastSubmittedReport(null);
+    setCurrentView('crtMarking');
+    setCrtStudents(prev => prev.map(s => ({ ...s, status: null })));
+  };
+
+  const handleSelectCrtReport = (report) => {
+    setCrtLastSubmittedReport(report);
+    setCurrentView('crtPrintReport');
   };
 
   if (!isAuthenticated) {
@@ -138,6 +168,39 @@ const App = () => {
           <PrintReportView
             reportData={lastSubmittedReport}
             onNewMarking={handleNewMarking}
+          />
+        );
+      case 'crtMarking':
+        return (
+          <DailyMarkingView
+            students={crtStudents}
+            setStudents={setCrtStudents}
+            onSubmissionSuccess={handleCrtSubmissionSuccess}
+            attendanceHistory={crtAttendanceHistory}
+            directAccess={directAccess}
+            defaultClass="CRT-Training"
+            classList={['CRT-Training']}
+            title="CRT Attendance Marking"
+          />
+        );
+      case 'crtLog':
+        return (
+          <DailyAttendanceLogView
+            attendanceHistory={crtAttendanceHistory}
+            setAttendanceHistory={setCrtAttendanceHistory}
+            onSelectReport={handleSelectCrtReport}
+            userRole="admin"
+            directAccess={directAccess}
+            className="CRT-Training"
+            filenamePrefix="CRT_Training"
+            title="CRT Attendance Reports"
+          />
+        );
+      case 'crtPrintReport':
+        return (
+          <PrintReportView
+            reportData={crtLastSubmittedReport}
+            onNewMarking={handleCrtNewMarking}
           />
         );
       case 'backlogs':
@@ -182,6 +245,8 @@ const App = () => {
     { id: 'dailyMarking', label: 'Mark Attendance', icon: UserCheck },
     { id: 'classMembers', label: 'Manage Class Members', icon: Users },
     { id: 'dailyLog', label: 'Attendance Log', icon: Calendar },
+    { id: 'crtMarking', label: 'Mark CRT Attendance', icon: UserCheck },
+    { id: 'crtLog', label: 'CRT Attendance Log', icon: Calendar },
     { id: 'backlogs', label: 'Backlogs', icon: BookOpen },
     { id: 'subjectWise', label: 'Sub-wise Backlog Count', icon: BarChart2 },
     { id: 'parentDetails', label: 'Parent Details', icon: PhoneCall },

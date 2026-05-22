@@ -86,7 +86,17 @@ const EditReportModal = ({ report, onSave, onClose }) => {
   );
 };
 
-export const DailyAttendanceLogView = ({ attendanceHistory, setAttendanceHistory, onSelectReport, currentStudent, userRole, directAccess }) => {
+export const DailyAttendanceLogView = ({
+  attendanceHistory,
+  setAttendanceHistory,
+  onSelectReport,
+  currentStudent,
+  userRole,
+  directAccess,
+  className = 'K12AIDHA',
+  filenamePrefix = 'K12AIDHA',
+  title = 'Attendance Reports'
+}) => {
   const today = new Date().toISOString().split('T')[0];
   const [reportType, setReportType] = useState('daily');
   const [startDate, setStartDate] = useState(today);
@@ -167,7 +177,7 @@ export const DailyAttendanceLogView = ({ attendanceHistory, setAttendanceHistory
     const totalDays = reports.length;
 
     return {
-      class: 'K12AIDHA',
+      class: className,
       date: `${startDate} to ${endDate}`,
       records: studentList,
       presentCount: totalPresent,
@@ -243,7 +253,7 @@ export const DailyAttendanceLogView = ({ attendanceHistory, setAttendanceHistory
     });
 
     const label = reportTypes.find(t => t.id === reportType)?.label ?? 'Daily';
-    XLSX.writeFile(wb, `K12AIDHA_Attendance_${label}_${startDate}_to_${endDate}.xlsx`);
+    XLSX.writeFile(wb, `${filenamePrefix}_Attendance_${label}_${startDate}_to_${endDate}.xlsx`);
   };
 
   const exportAggregatedReportToExcel = () => {
@@ -294,7 +304,7 @@ export const DailyAttendanceLogView = ({ attendanceHistory, setAttendanceHistory
     wsSummary['!cols'] = [{ wch: 32 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
-    XLSX.writeFile(wb, `K12AIDHA_Attendance_${label.replace(/ /g, '_')}_${startDate}_to_${endDate}.xlsx`);
+    XLSX.writeFile(wb, `${filenamePrefix}_Attendance_${label.replace(/ /g, '_')}_${startDate}_to_${endDate}.xlsx`);
   };
 
   const hasData = getFilteredReports.length > 0;
@@ -384,7 +394,7 @@ export const DailyAttendanceLogView = ({ attendanceHistory, setAttendanceHistory
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h2 className="text-3xl font-extrabold text-gray-900 flex items-center">
-          <Calendar className="w-7 h-7 mr-2 text-indigo-600" /> Attendance Reports
+          <Calendar className="w-7 h-7 mr-2 text-indigo-600" /> {title}
         </h2>
         <button
           onClick={handleExport}
@@ -500,7 +510,7 @@ export const DailyAttendanceLogView = ({ attendanceHistory, setAttendanceHistory
                             const ws = XLSX.utils.json_to_sheet(rows);
                             ws['!cols'] = [{ wch: 6 }, { wch: 14 }, { wch: 36 }, { wch: 10 }];
                             XLSX.utils.book_append_sheet(wb, ws, report.reportDate.slice(0, 31));
-                            XLSX.writeFile(wb, `K12AIDHA_Attendance_${report.reportDate}.xlsx`);
+                            XLSX.writeFile(wb, `${filenamePrefix}_Attendance_${report.reportDate}.xlsx`);
                           }}
                           className="flex items-center gap-1 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-semibold transition-colors"
                           title="Export this day to Excel"
