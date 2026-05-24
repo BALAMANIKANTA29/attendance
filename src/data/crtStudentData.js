@@ -11,6 +11,7 @@ export const crtStudentData = [
   { id: '23B21A45A4', name: 'MAGANTI PRASAD', status: null },
   { id: '23B21A45A5', name: 'NUNNA KARTHIK', status: null },
   { id: '23B21A45A6', name: 'MANDADI NAGARATNAKAR', status: null },
+  { id: '23B21A45B4', name: 'VANAMA AKHIL', status: null },
   { id: '23B21A45B7', name: 'NIMMAGADDA GIRISH', status: null },
   { id: '23B21A45C9', name: 'NARADALA BALA MANIKANTA', status: null },
   { id: '24B25A4504', name: 'AYYANKI THANUSHA', status: null },

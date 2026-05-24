@@ -35,6 +35,20 @@ const App = () => {
   const [lastSubmittedReport, setLastSubmittedReport] = useLocalStorage('lastSubmittedReport', null);
 
   const [crtStudents, setCrtStudents] = useLocalStorage('crtStudents', defaultCrtStudentData);
+
+  React.useEffect(() => {
+    const targetRoll = '23B21A45B4';
+    if (crtStudents && crtStudents.length > 0 && !crtStudents.some(s => (s.id || s.roll) === targetRoll)) {
+      setCrtStudents(prev => {
+        if (prev && !prev.some(s => (s.id || s.roll) === targetRoll)) {
+          const newStudent = { id: targetRoll, name: 'VANAMA AKHIL', status: null };
+          return [...prev, newStudent];
+        }
+        return prev;
+      });
+    }
+  }, [crtStudents, setCrtStudents]);
+
   const [crtAttendanceHistory, setCrtAttendanceHistory] = useLocalStorage('crtAttendanceHistory', {});
   const [crtLastSubmittedReport, setCrtLastSubmittedReport] = useLocalStorage('crtLastSubmittedReport', null);
 
