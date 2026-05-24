@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { BookOpen, AlertTriangle, CheckCircle, Search, Filter, Download, Edit2, Save, X, Plus, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { getLocalDateString } from '../utils/dateUtils';
 
 const DEFAULT_SEMESTERS = [
     { key: 's11', label: '1-1' },
@@ -379,7 +380,7 @@ export const BacklogsView = ({ students, setStudents, semesters: propSemesters, 
         const workbook = XLSX.utils.book_new();
         const sheetName = `Backlogs`.slice(0, 31);
         XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-        const today = new Date().toISOString().slice(0, 10);
+        const today = getLocalDateString();
         XLSX.writeFile(workbook, `AID_Backlogs_${today}.xlsx`);
     };
 

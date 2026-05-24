@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Calendar, TrendingUp, BarChart3, FileText, Edit2, Save, X, CheckCircle, XCircle, Download, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { getLocalDateString } from '../utils/dateUtils';
 
 // Edit Modal for a single attendance report
 const EditReportModal = ({ report, onSave, onClose }) => {
@@ -97,9 +98,10 @@ export const DailyAttendanceLogView = ({
   filenamePrefix = 'K12AIDHA',
   title = 'Attendance Reports'
 }) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
+  const thirtyDaysAgo = getLocalDateString(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
   const [reportType, setReportType] = useState('daily');
-  const [startDate, setStartDate] = useState(today);
+  const [startDate, setStartDate] = useState(thirtyDaysAgo);
   const [endDate, setEndDate] = useState(today);
   const [editingReport, setEditingReport] = useState(null);
 
@@ -340,41 +342,43 @@ export const DailyAttendanceLogView = ({
   };
 
   const setDateRange = (type) => {
-    const today = new Date();
+    const todayObj = new Date();
     let start, end;
 
     switch (type) {
       case 'daily': {
-        start = end = today.toISOString().split('T')[0];
+        start = end = getLocalDateString(todayObj);
         break;
       }
       case 'weekly': {
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay());
+        const weekStart = new Date(todayObj);
+        weekStart.setDate(todayObj.getDate() - todayObj.getDay());
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
-        start = weekStart.toISOString().split('T')[0];
-        end = weekEnd.toISOString().split('T')[0];
+        start = getLocalDateString(weekStart);
+        end = getLocalDateString(weekEnd);
         break;
       }
       case 'monthly': {
-        start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-        end = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+        const firstDay = new Date(todayObj.getFullYear(), todayObj.getMonth(), 1);
+        const lastDay = new Date(todayObj.getFullYear(), todayObj.getMonth() + 1, 0);
+        start = getLocalDateString(firstDay);
+        end = getLocalDateString(lastDay);
         break;
       }
       case 'semester': {
-        const currentMonth = today.getMonth();
+        const currentMonth = todayObj.getMonth();
         if (currentMonth < 6) {
-          start = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
-          end = new Date(today.getFullYear(), 5, 30).toISOString().split('T')[0];
+          start = getLocalDateString(new Date(todayObj.getFullYear(), 0, 1));
+          end = getLocalDateString(new Date(todayObj.getFullYear(), 5, 30));
         } else {
-          start = new Date(today.getFullYear(), 6, 1).toISOString().split('T')[0];
-          end = new Date(today.getFullYear(), 11, 31).toISOString().split('T')[0];
+          start = getLocalDateString(new Date(todayObj.getFullYear(), 6, 1));
+          end = getLocalDateString(new Date(todayObj.getFullYear(), 11, 31));
         }
         break;
       }
       default: {
-        start = end = today.toISOString().split('T')[0];
+        start = end = getLocalDateString(todayObj);
       }
     }
 

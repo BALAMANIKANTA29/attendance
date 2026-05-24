@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserCheck, ListOrdered, Info, CheckCircle } from 'lucide-react';
+import { getLocalDateString } from '../utils/dateUtils';
 
 export const DailyMarkingView = ({
   students,
@@ -13,7 +14,7 @@ export const DailyMarkingView = ({
 }) => {
   const [selectedClass, setSelectedClass] = useState(defaultClass);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
 
   const handleStatusChange = (studentId) => {
     setStudents(prevStudents =>

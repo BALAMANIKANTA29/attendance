@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { BarChart2, Download, BookMarked, X, User, ChevronRight, Plus, Trash2, Edit2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { getLocalDateString } from '../utils/dateUtils';
 
 const DEFAULT_SEMESTERS = [
     { key: 's11', label: 'Semester 1-1', short: '1-1', color: 'indigo' },
@@ -122,7 +123,7 @@ const StudentListModal = ({ subject, students, setStudents, semesters, onClose, 
         ws['!cols'] = [{ wch: 6 }, { wch: 14 }, { wch: 38 }, { wch: 8 }, { wch: 18 }, { wch: 14 }];
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, subject.slice(0, 31));
-        const today = new Date().toISOString().slice(0, 10);
+        const today = getLocalDateString();
         XLSX.writeFile(wb, `AID_${subject}_Failed_Students_${today}.xlsx`);
     };
 
@@ -374,7 +375,7 @@ export const SubjectWiseView = ({ students, setStudents, semesters: propSemester
             XLSX.utils.book_append_sheet(wb, ws, `Sem ${sem.short}`);
         });
 
-        const today = new Date().toISOString().slice(0, 10);
+        const today = getLocalDateString();
         XLSX.writeFile(wb, `AID_SubjectWise_Backlogs_${today}.xlsx`);
     };
 

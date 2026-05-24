@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Laptop, Search, Download, Mail, Hash, Users, Filter, Edit2, Save, X, Trash2, Plus } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { studentInfoData as defaultData, teams as defaultTeams } from '../data/studentInfoData';
+import { getLocalDateString } from '../utils/dateUtils';
 
 const TEAM_COLORS = [
     'indigo', 'violet', 'blue', 'cyan', 'teal', 'emerald', 'green', 'lime', 'amber', 'orange', 'rose', 'pink'
@@ -233,7 +234,7 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
         ];
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Student Info');
-        const today = new Date().toISOString().slice(0, 10);
+        const today = getLocalDateString();
         XLSX.writeFile(wb, `AID_StudentInfo_${today}.xlsx`);
     };
 
@@ -246,7 +247,7 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
         ws['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 28 }, { wch: 14 }, { wch: 22 }];
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'ABC IDs');
-        const today = new Date().toISOString().slice(0, 10);
+        const today = getLocalDateString();
         XLSX.writeFile(wb, `AID_ABC_IDs_${today}.xlsx`);
     };
 

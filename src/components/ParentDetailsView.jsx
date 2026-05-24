@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Users, Search, Download, Phone, Edit2, Save, X, Plus, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { getLocalDateString } from '../utils/dateUtils';
 
 const defaultParentData = [
     { sno: 1, hno: '23B21A4517', classId: 'K12AIDHA', staying: 'CLG HOSTEL', dept: 45, name: 'MANCHALA JYOTSNA', bCode: 'AID', stContact: '8790750267', parentNames: 'MANCHALA SUBBAYAMMA', p1: 'NA', p2: '9000603454' },
@@ -248,7 +249,7 @@ export const ParentDetailsView = ({ parentDataOverrides = {}, setParentDataOverr
         ];
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Parent Details');
-        const today = new Date().toISOString().slice(0, 10);
+        const today = getLocalDateString();
         XLSX.writeFile(wb, `AID_Parent_Details_${today}.xlsx`);
     };
 
