@@ -300,18 +300,32 @@ export const BacklogsView = ({ students, setStudents, semesters: propSemesters, 
         }
     };
 
+    // Compute student active backlog counts first to avoid recalculating repeatedly
+    const studentsWithActiveCounts = useMemo(() => {
+        return students.map(s => {
+            const activeBc = semesters
+                .filter(sem => sem.type !== 'detail' && visibleActiveSems.includes(sem.key))
+                .reduce((total, sem) => {
+                    const val = s[sem.key] || '';
+                    if (!val.trim() || val === '-') return total;
+                    return total + val.split(',').filter(sub => sub.trim()).length;
+                }, 0);
+            return { ...s, activeBacklogCount: activeBc };
+        });
+    }, [students, semesters, visibleActiveSems]);
+
     const filtered = useMemo(() => {
-        return students
+        return studentsWithActiveCounts
             .map((s, i) => ({ ...s, sno: i + 1 }))
             .filter((s) => {
                 const matchSearch =
                     s.name.toLowerCase().includes(search.toLowerCase()) ||
                     s.id.toLowerCase().includes(search.toLowerCase());
 
-                const bc = s.backlogCount ?? 0;
+                const bc = s.activeBacklogCount;
                 let matchFilter;
                 if (filterMode === 'withBacklogs') {
-                    matchFilter = visibleActiveSems.some(key => s[key] && s[key].trim() !== '');
+                    matchFilter = bc > 0;
                 } else if (filterMode === 'clear') {
                     matchFilter = bc === 0;
                 } else {
@@ -320,15 +334,23 @@ export const BacklogsView = ({ students, setStudents, semesters: propSemesters, 
 
                 return matchSearch && matchFilter;
             });
-    }, [students, search, filterMode, visibleActiveSems]);
+    }, [studentsWithActiveCounts, search, filterMode]);
 
-    const totalBacklogs = students.reduce((sum, s) => sum + (s.backlogCount ?? 0), 0);
-    const studentsWithBacklogs = students.filter((s) => (s.backlogCount ?? 0) > 0).length;
-    const clearStudents = students.filter((s) => (s.backlogCount ?? 0) === 0).length;
+    const totalBacklogs = useMemo(() => {
+        return studentsWithActiveCounts.reduce((sum, s) => sum + s.activeBacklogCount, 0);
+    }, [studentsWithActiveCounts]);
+
+    const studentsWithBacklogs = useMemo(() => {
+        return studentsWithActiveCounts.filter(s => s.activeBacklogCount > 0).length;
+    }, [studentsWithActiveCounts]);
+
+    const clearStudents = useMemo(() => {
+        return studentsWithActiveCounts.filter(s => s.activeBacklogCount === 0).length;
+    }, [studentsWithActiveCounts]);
 
     const backlogBreakdown = useMemo(() => {
-        const breakdownMap = students.reduce((acc, s) => {
-            const bc = s.backlogCount ?? 0;
+        const breakdownMap = studentsWithActiveCounts.reduce((acc, s) => {
+            const bc = s.activeBacklogCount;
             if (bc > 0) {
                 acc[bc] = (acc[bc] || 0) + 1;
             }
@@ -338,7 +360,7 @@ export const BacklogsView = ({ students, setStudents, semesters: propSemesters, 
         return Object.entries(breakdownMap)
             .map(([backlogs, members]) => ({ backlogs: parseInt(backlogs), members }))
             .sort((a, b) => a.backlogs - b.backlogs);
-    }, [students]);
+    }, [studentsWithActiveCounts]);
 
     const handleSaveEdit = (updated) => {
         if (setStudents) {
@@ -362,7 +384,7 @@ export const BacklogsView = ({ students, setStudents, semesters: propSemesters, 
                 'Student Name': s.name,
                 'Branch': 'AID',
                 'CTPO': 'Mr. G. Rajendra Babu',
-                'Backlogs (total)': s.backlogCount ?? 0,
+                'Backlogs (total)': s.activeBacklogCount ?? 0,
             };
             activeSemDefs.forEach(sem => {
                 row[`Sem ${sem.label}`] = s[sem.key] || '—';
@@ -596,7 +618,7 @@ export const BacklogsView = ({ students, setStudents, semesters: propSemesters, 
                             </tr>
                         ) : (
                             filtered.map((student, idx) => {
-                                const bc = student.backlogCount ?? 0;
+                                const bc = student.activeBacklogCount ?? 0;
                                 const hasBacklog = bc > 0;
                                 return (
                                     <tr
