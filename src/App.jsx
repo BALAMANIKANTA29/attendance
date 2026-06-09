@@ -273,7 +273,7 @@ const App = () => {
     <div className="min-h-screen bg-gray-50 font-sans antialiased">
       {/* Header/Navigation */}
       <header className="bg-white shadow-md p-4 sticky top-0 z-20 print:hidden">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+        <div className="w-full px-4 md:px-8 flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
               <CheckCircle className="w-6 h-6 text-white" />
@@ -341,7 +341,7 @@ const App = () => {
       </nav>
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto flex">
+      <main className="w-full px-4 md:px-8 flex">
         {/* Desktop Sidebar Navigation */}
         <nav className="hidden sm:block w-64 bg-white border-r border-gray-200 sticky top-20 h-fit print:hidden">
           <div className="p-4 space-y-2">
