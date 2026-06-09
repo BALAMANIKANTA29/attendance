@@ -44,6 +44,18 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT -- JSON string
   );
+
+  CREATE TABLE IF NOT EXISTS admin_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS admin_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT UNIQUE,
+    expires_at TEXT,
+    last_access TEXT DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 export default db;
