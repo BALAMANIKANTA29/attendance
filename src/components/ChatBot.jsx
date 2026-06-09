@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   MessageSquare, Send, X, Trash2, User, Phone, Mail, BookOpen, 
-  Laptop, MapPin, Users, Settings, AlertTriangle, Sparkles, CheckCircle 
+  Laptop, MapPin, Users, Settings, AlertTriangle, Sparkles, CheckCircle,
+  Mic, MicOff
 } from 'lucide-react';
 
 export const ChatBot = ({
@@ -24,7 +25,86 @@ export const ChatBot = ({
     }
   ]);
   const [inputText, setInputText] = useState('');
-  
+
+  // Voice Query (Speech-to-Text) States
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const recognitionRef = useRef(null);
+
+  // Keep a ref to the latest handleSendMessage to avoid stale closures
+  const handleSendMessageRef = useRef(null);
+  useEffect(() => {
+    handleSendMessageRef.current = handleSendMessage;
+  });
+
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setSpeechSupported(true);
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'en-US';
+
+      rec.onstart = () => {
+        setIsListening(true);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      rec.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+      };
+
+      rec.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInputText(prev => {
+            const combined = prev ? `${prev} ${transcript}` : transcript;
+            // Trigger auto-send after a small delay
+            setTimeout(() => {
+              if (handleSendMessageRef.current) {
+                handleSendMessageRef.current(combined);
+              }
+            }, 100);
+            return '';
+          });
+        }
+      };
+
+      recognitionRef.current = rec;
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Stop listening if drawer is closed
+  useEffect(() => {
+    if (!isOpen && isListening && recognitionRef.current) {
+      recognitionRef.current.abort();
+    }
+  }, [isOpen, isListening]);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      try {
+        recognitionRef.current.start();
+      } catch (err) {
+        console.error("Failed to start speech recognition:", err);
+      }
+    }
+  };
+
   // Draggable FAB Position (2D coordinates)
   const [fabPosition, setFabPosition] = useState(() => {
     try {
@@ -253,32 +333,67 @@ export const ChatBot = ({
       targetStudent = allSt.find(s => s.roll.toLowerCase() === matchRoll);
     }
     
-    // Sort students by name length descending to check for longest name match first (e.g. "PRASAD" or "M.PRASAD")
+    // Scoring-Based Name Matcher with Smart Disambiguation
     if (!targetStudent) {
-      const sortedSt = [...allSt].sort((a, b) => b.name.length - a.name.length);
-      for (const st of sortedSt) {
+      const stopwords = ['show', 'me', 'who', 'is', 'what', 'the', 'details', 'of', 'student', 'about', 'parent', 'contact', 'email', 'room', 'laptop', 'backlogs', 'project', 'phone', 'number', 'address', 'today', 'status'];
+      const queryWords = cleanQuery.split(/\s+/).filter(w => !stopwords.includes(w) && w.length >= 2);
+
+      const scoredStudents = allSt.map(st => {
         const nameLower = st.name.toLowerCase();
-        // Clean name from symbols (like dots or spaces) to prevent regex mismatch
         const cleanName = nameLower.replace(/[^a-z0-9\s]/g, ' ');
-        const nameParts = cleanName.split(/\s+/).filter(part => part.length > 2);
+        const cleanStudentName = nameLower.replace(/[^a-z0-9\s]/g, ' ');
+        const nameParts = cleanName.split(/\s+/).filter(part => part.length >= 2);
         
-        // Match exact full name or parts of the name
-        if (cleanQuery.includes(nameLower)) {
-          targetStudent = st;
-          break;
+        let score = 0;
+        
+        // 1. Full name match (contains clean name or raw name)
+        if (cleanQuery.includes(cleanStudentName) || cleanQuery.includes(nameLower)) {
+          score += 10;
         }
         
-        // Match name parts as whole words in query
-        let matchedPart = false;
-        for (const part of nameParts) {
+        // 2. Part matching (student name parts in query)
+        nameParts.forEach(part => {
           const partRegex = new RegExp(`\\b${part}\\b`, 'i');
           if (partRegex.test(cleanQuery)) {
-            targetStudent = st;
-            matchedPart = true;
-            break;
+            score += 2;
+          }
+        });
+
+        // 3. Query words matching name parts exactly
+        queryWords.forEach(word => {
+          if (nameParts.includes(word)) {
+            score += 1;
+          }
+        });
+
+        return { student: st, score };
+      });
+
+      const matched = scoredStudents.filter(item => item.score > 0).sort((a, b) => b.score - a.score);
+
+      if (matched.length > 0) {
+        const maxScore = matched[0].score;
+        const topMatches = matched.filter(item => item.score === maxScore).map(item => item.student);
+
+        if (topMatches.length === 1) {
+          targetStudent = topMatches[0];
+        } else {
+          // If multiple top matches, check if only one student's full name is in the query
+          const exactFullMatches = topMatches.filter(s => cleanQuery.includes(s.name.toLowerCase()));
+          if (exactFullMatches.length === 1) {
+            targetStudent = exactFullMatches[0];
+          } else {
+            // Ambiguity found - return a list of matched students
+            const rows = topMatches.map(s => [s.roll, s.name, s.team.split(' ')[0], s.room || 'N/A']);
+            return {
+              text: `I found ${topMatches.length} students matching your query. Which one did you mean?`,
+              table: {
+                headers: ["Roll No", "Student Name", "Team", "Room"],
+                rows: rows
+              }
+            };
           }
         }
-        if (matchedPart) break;
       }
     }
 
@@ -476,12 +591,57 @@ export const ChatBot = ({
     ];
     let matchedSem = null;
     for (const sk of semKeys) {
-      if (cleanQuery.includes(sk.label) || cleanQuery.includes(`sem ${sk.label}`) || (sk.key === 's11' && cleanQuery.includes('1st sem')) || (sk.key === 's12' && cleanQuery.includes('2nd sem'))) {
+      if (cleanQuery.includes(sk.label) || 
+          cleanQuery.includes(`sem ${sk.label}`) || 
+          cleanQuery.includes(`semester ${sk.label}`) ||
+          (sk.key === 's11' && (cleanQuery.includes('1st sem') || cleanQuery.includes('first sem') || cleanQuery.includes('semester 1'))) || 
+          (sk.key === 's12' && (cleanQuery.includes('2nd sem') || cleanQuery.includes('second sem') || cleanQuery.includes('semester 2'))) ||
+          (sk.key === 's21' && (cleanQuery.includes('3rd sem') || cleanQuery.includes('third sem') || cleanQuery.includes('semester 3'))) ||
+          (sk.key === 's22' && (cleanQuery.includes('4th sem') || cleanQuery.includes('fourth sem') || cleanQuery.includes('semester 4'))) ||
+          (sk.key === 's31' && (cleanQuery.includes('5th sem') || cleanQuery.includes('fifth sem') || cleanQuery.includes('semester 5')))
+      ) {
         matchedSem = sk;
         break;
       }
     }
-    if (matchedSem && /\b(backlog|backlogs|fail|fails)\b/i.test(cleanQuery)) {
+
+    if (matchedSem && /\b(backlog|backlogs|fail|fails|sub wise|subject wise|subject-wise)\b/i.test(cleanQuery)) {
+      // 4.1. Subject-Wise Backlog Count for this specific Semester
+      if (/\b(sub wise|subject wise|subject-wise)\b/i.test(cleanQuery)) {
+        const subjectCounts = {};
+        allSt.forEach(s => {
+          const field = s[matchedSem.key] || '';
+          if (field && field.trim() !== '') {
+            field.split(',').forEach(sub => {
+              const name = sub.trim().toUpperCase();
+              if (name && name !== '-' && name !== '') {
+                subjectCounts[name] = (subjectCounts[name] || 0) + 1;
+              }
+            });
+          }
+        });
+
+        const sortedSubjects = Object.entries(subjectCounts)
+          .map(([subject, count]) => ({ subject, count }))
+          .sort((a, b) => b.count - a.count);
+
+        if (sortedSubjects.length === 0) {
+          return { text: `No subject-wise backlogs recorded for Semester ${matchedSem.label}! Everything is clear.` };
+        }
+
+        const totalInstances = sortedSubjects.reduce((acc, item) => acc + item.count, 0);
+        const rows = sortedSubjects.map(item => [item.subject, item.count]);
+
+        return {
+          text: `Subject-Wise Backlog Count for Semester ${matchedSem.label} (Total instances: ${totalInstances}):`,
+          table: {
+            headers: ["Subject Code", "Number of Failures"],
+            rows: rows
+          }
+        };
+      }
+
+      // 4.2. Student List with Backlogs for this specific Semester
       const failedStudents = allSt.filter(s => {
         const val = s[matchedSem.key] || '';
         return val.trim() !== '' && val !== '-';
@@ -590,7 +750,8 @@ export const ChatBot = ({
     }
 
     // 5.5. General Backlogs Query
-    if (/\b(who has backlog|list backlogs|backlog list|failed students)\b/i.test(cleanQuery)) {
+    if (/\b(who has backlog|list backlogs|backlog list|failed students)\b/i.test(cleanQuery) || 
+        cleanQuery === 'backlogs' || cleanQuery === 'backlog') {
       const backlogSt = allSt.filter(s => s.backlogs > 0);
       if (backlogSt.length === 0) {
         return { text: "Fantastic! All students are backlog-free." };
@@ -607,8 +768,8 @@ export const ChatBot = ({
       };
     }
 
-    // 5.6. Backlogs Distribution/Breakdown
-    if (/\b(breakdown|distribution|backlog breakdown|backlog stats)\b/i.test(cleanQuery)) {
+    // 5.6. Backlog Wise Count (Breakdown/Distribution)
+    if (/\b(backlog wise count|backlog breakdown|backlog distribution|backlog stats|backlog count)\b/i.test(cleanQuery)) {
       const breakdown = {};
       let totalCount = 0;
       allSt.forEach(s => {
@@ -619,12 +780,101 @@ export const ChatBot = ({
         }
       });
       
-      const rows = Object.entries(breakdown).map(([bc, qty]) => [`${bc} backlogs`, `${qty} student(s)`]);
+      const rows = Object.entries(breakdown)
+        .map(([bc, qty]) => [`${bc} backlog(s)`, `${qty} student(s)`])
+        .sort((a, b) => parseInt(b[0]) - parseInt(a[0]));
+        
       return { 
-        text: `Class Backlog Statistics:\n- Total backlog subjects: ${totalCount}\n- Students with backlogs: ${allSt.filter(s => s.backlogs > 0).length}`,
+        text: `Backlog Wise Count Summary:\n- Total backlog subjects: ${totalCount}\n- Students with backlogs: ${allSt.filter(s => s.backlogs > 0).length}`,
         table: {
-          headers: ["Backlog Count", "Quantity"],
+          headers: ["Backlog Count", "Quantity of Students"],
           rows: rows
+        }
+      };
+    }
+
+    // 5.6.5. Subject-Wise Backlog Count (Sub-Wise Count)
+    if (/\b(sub wise count|subject wise count|subject wise backlog|sub wise backlog|subject wise backlog count|subject-wise)\b/i.test(cleanQuery)) {
+      const subjectCounts = {};
+      const semKeys = ['s11', 's12', 's21', 's22', 's31'];
+      
+      allSt.forEach(s => {
+        semKeys.forEach(sem => {
+          const field = s[sem] || '';
+          if (field && field.trim() !== '') {
+            field.split(',').forEach(sub => {
+              const name = sub.trim().toUpperCase();
+              if (name && name !== '-' && name !== '') {
+                subjectCounts[name] = (subjectCounts[name] || 0) + 1;
+              }
+            });
+          }
+        });
+      });
+      
+      const sortedSubjects = Object.entries(subjectCounts)
+        .map(([subject, count]) => ({ subject, count }))
+        .sort((a, b) => b.count - a.count);
+        
+      if (sortedSubjects.length === 0) {
+        return { text: "No subject-wise backlogs recorded! All students are clear." };
+      }
+      
+      const totalInstances = sortedSubjects.reduce((acc, item) => acc + item.count, 0);
+      const rows = sortedSubjects.map(item => [item.subject, item.count]);
+      
+      return {
+        text: `Subject-Wise Backlog Count (Total instances: ${totalInstances}):`,
+        table: {
+          headers: ["Subject Code", "Number of Failures"],
+          rows: rows
+        }
+      };
+    }
+
+    // 5.6.8. Total Backlogs Summary
+    if (/\b(total backlogs summary|backlogs summary|backlog summary|overall backlog summary|backlog report)\b/i.test(cleanQuery)) {
+      const backlogStudents = allSt.filter(s => s.backlogs > 0);
+      const totalStudents = allSt.length;
+      const totalBacklogInstances = backlogStudents.reduce((acc, s) => acc + (s.backlogs || 0), 0);
+      
+      // Calculate most common subject
+      const subjectCounts = {};
+      const semKeys = ['s11', 's12', 's21', 's22', 's31'];
+      allSt.forEach(s => {
+        semKeys.forEach(sem => {
+          const field = s[sem] || '';
+          if (field && field.trim() !== '') {
+            field.split(',').forEach(sub => {
+              const name = sub.trim().toUpperCase();
+              if (name && name !== '-' && name !== '') {
+                subjectCounts[name] = (subjectCounts[name] || 0) + 1;
+              }
+            });
+          }
+        });
+      });
+      const sortedSubjects = Object.entries(subjectCounts).sort((a, b) => b[1] - a[1]);
+      const mostCommonSub = sortedSubjects.length > 0 ? `${sortedSubjects[0][0]} (${sortedSubjects[0][1]} failures)` : 'None';
+
+      const maxBacklogs = backlogStudents.length > 0 ? Math.max(...backlogStudents.map(s => s.backlogs)) : 0;
+      const maxBacklogStudent = maxBacklogs > 0 ? backlogStudents.find(s => s.backlogs === maxBacklogs) : null;
+      const maxBacklogText = maxBacklogStudent ? `${maxBacklogStudent.name} (${maxBacklogs} backlogs)` : 'N/A';
+
+      const avgBacklogs = backlogStudents.length > 0 ? (totalBacklogInstances / backlogStudents.length).toFixed(1) : '0';
+
+      return {
+        text: "Class Backlog Summary Report:",
+        table: {
+          headers: ["Metric", "Value"],
+          rows: [
+            ["Total Enrolled Students", totalStudents],
+            ["Students with Backlogs", `${backlogStudents.length} (${Math.round((backlogStudents.length/totalStudents)*100)}%)`],
+            ["Total Backlog Instances", totalBacklogInstances],
+            ["Average Backlogs (affected students)", avgBacklogs],
+            ["Most Common Backlog Subject", mostCommonSub],
+            ["Highest Backlog Count (Student)", maxBacklogText]
+          ]
         }
       };
     }
@@ -1097,22 +1347,41 @@ export const ChatBot = ({
                 Go to Settings
               </button>
             </div>
-
             {/* Input Footer */}
-            <div className="p-4 border-t border-gray-200 bg-white shrink-0">
+            <div className="p-4 border-t border-gray-250 bg-white shrink-0">
               <div className="flex items-center space-x-2 bg-gray-50 border border-gray-300 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 focus-within:bg-white transition-all shadow-inner">
                 <input 
                   type="text" 
                   value={inputText}
                   onChange={e => setInputText(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="Ask a question..."
-                  className="flex-1 bg-transparent border-none outline-none text-gray-800 text-sm placeholder-gray-400"
+                  onKeyDown={e => e.key === 'Enter' && !isListening && handleSendMessage()}
+                  placeholder={isListening ? "Listening... Speak now!" : "Ask a question..."}
+                  disabled={isListening}
+                  className="flex-1 bg-transparent border-none outline-none text-gray-800 text-sm placeholder-gray-400 font-sans"
                 />
                 
+                {speechSupported && (
+                  <button 
+                    onClick={toggleListening}
+                    type="button"
+                    className={`p-1.5 rounded-lg transition-all ${
+                      isListening 
+                        ? 'bg-red-50 text-red-600 animate-pulse border border-red-200' 
+                        : 'text-gray-400 hover:bg-gray-150 hover:text-gray-700'
+                    }`}
+                    title={isListening ? "Stop listening" : "Ask with voice"}
+                  >
+                    {isListening ? (
+                      <MicOff className="w-4 h-4" />
+                    ) : (
+                      <Mic className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
+
                 <button 
                   onClick={() => handleSendMessage()}
-                  disabled={!inputText.trim()}
+                  disabled={!inputText.trim() || isListening}
                   className="p-1.5 rounded-lg text-indigo-600 hover:bg-gray-150 disabled:text-gray-300 transition-colors"
                 >
                   <Send className="w-4.5 h-4.5" />
