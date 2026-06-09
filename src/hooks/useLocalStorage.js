@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react';
 
-const API_URL = '/api';
+const getApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    const { hostname, protocol } = window.location;
+    if (hostname.includes('vercel.app') || (protocol === 'https:' && !hostname.includes('localhost') && !hostname.includes('127.0.0.1'))) {
+      return 'http://localhost:3001/api';
+    }
+    return '/api';
+  }
+  return 'http://localhost:3001/api';
+};
+
+const API_URL = getApiUrl();
 
 /**
  * useLocalStorage Bridge Hook
