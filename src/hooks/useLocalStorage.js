@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = '/api';
 
 /**
  * useLocalStorage Bridge Hook

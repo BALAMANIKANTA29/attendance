@@ -77,7 +77,7 @@ const App = () => {
     { key: 's31', label: '3-1' },
   ]);
 
-  const [directAccess, setDirectAccess] = useLocalStorage('directAccess', false);
+  const [directAccess, setDirectAccess] = useLocalStorage('directAccess', true);
 
   const clearAttendanceHistory = () => {
     setAttendanceHistory({});
@@ -90,6 +90,7 @@ const App = () => {
   const handleLogin = () => {
     setIsAuthenticated(true);
     setCurrentView('dailyMarking');
+    setDirectAccess(true);
   };
 
   const handleLogout = () => {
