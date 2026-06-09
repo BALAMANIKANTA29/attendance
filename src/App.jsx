@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Calendar, UserCheck, LogOut, Menu, X, CheckCircle, Users, Settings, BookOpen, BarChart2, PhoneCall, Info } from 'lucide-react';
 
 import { DailyMarkingView } from './components/DailyMarkingView';
@@ -12,9 +12,7 @@ import { SubjectWiseView } from './components/SubjectWiseView';
 import { ParentDetailsView } from './components/ParentDetailsView';
 import { StudentInfoView } from './components/StudentInfoView';
 import { ChatBot } from './components/ChatBot';
-import { AdminPasswordModal } from './components/AdminPasswordModal';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { hasActiveSession, clearSession } from './services/passwordAuthService';
 import { studentInfoData as defaultStudentInfoData } from './data/studentInfoData';
 import { crtStudentData as defaultCrtStudentData } from './data/crtStudentData';
 
@@ -24,34 +22,6 @@ const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState('dailyMarking');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [passwordVerified, setPasswordVerified] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
-
-  // Check password authentication status on app load
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const verified = hasActiveSession();
-        setPasswordVerified(verified);
-      } catch (error) {
-        console.error('Error checking authentication:', error);
-        setPasswordVerified(false);
-      } finally {
-        setCheckingAuth(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  const handlePasswordAuthenticated = () => {
-    setPasswordVerified(true);
-  };
-
-  const handleLogoutClick = () => {
-    clearSession();
-    setPasswordVerified(false);
-  };
 
   const [students, setStudents] = useLocalStorage('students', []);
 
@@ -125,7 +95,6 @@ const App = () => {
   };
 
   const handleLogout = () => {
-    handleLogoutClick(); // Clear password session
     setIsAuthenticated(false);
     setCurrentView('dailyMarking');
     setMobileMenuOpen(false);
@@ -179,23 +148,6 @@ const App = () => {
 
   if (!isAuthenticated) {
     return <LoginView onLogin={handleLogin} />;
-  }
-
-  if (checkingAuth) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin mb-4">
-            <CheckCircle className="w-12 h-12 text-indigo-600 mx-auto" />
-          </div>
-          <p className="text-gray-600">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!passwordVerified) {
-    return <AdminPasswordModal onAuthenticated={handlePasswordAuthenticated} />;
   }
 
   const renderContent = () => {
