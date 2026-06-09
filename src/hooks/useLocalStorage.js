@@ -3,9 +3,22 @@ import { useState, useEffect } from 'react';
 const getApiUrl = () => {
   if (typeof window !== 'undefined') {
     const { hostname, protocol } = window.location;
-    if (hostname.includes('vercel.app') || (protocol === 'https:' && !hostname.includes('localhost') && !hostname.includes('127.0.0.1'))) {
+    
+    // If running on Vercel, use local fallback
+    if (hostname.includes('vercel.app')) {
       return 'http://localhost:3001/api';
     }
+    
+    // If accessed on localhost, relative '/api' goes through Vite proxy
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return '/api';
+    }
+    
+    // If accessed from other devices via IP (e.g. 192.168.x.x), connect directly to the Express backend port 3001
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+      return `${protocol}//${hostname}:3001/api`;
+    }
+    
     return '/api';
   }
   return 'http://localhost:3001/api';

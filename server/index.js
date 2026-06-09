@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import db from './db.js';
+import os from 'os';
 
 const app = express();
 const port = 3001;
@@ -118,6 +119,20 @@ app.post('/api/settings/:key', (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+const getLocalIp = () => {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+};
+
+app.listen(port, '0.0.0.0', () => {
+  const localIp = getLocalIp();
+  console.log(`Server running locally at http://localhost:${port}`);
+  console.log(`Access backend on other devices via: http://${localIp}:${port}`);
 });
