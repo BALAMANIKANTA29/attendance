@@ -11,6 +11,7 @@ import { BacklogsView } from './components/BacklogsView';
 import { SubjectWiseView } from './components/SubjectWiseView';
 import { ParentDetailsView } from './components/ParentDetailsView';
 import { StudentInfoView } from './components/StudentInfoView';
+import { ChatBot } from './components/ChatBot';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { studentInfoData as defaultStudentInfoData } from './data/studentInfoData';
 import { crtStudentData as defaultCrtStudentData } from './data/crtStudentData';
@@ -379,6 +380,18 @@ const App = () => {
           {renderContent()}
         </div>
       </main>
+      
+      <ChatBot
+        students={students}
+        attendanceHistory={attendanceHistory}
+        crtStudents={crtStudents}
+        crtAttendanceHistory={crtAttendanceHistory}
+        classInfo={classInfo}
+        attendancePolicy={attendancePolicy}
+        studentInfoData={studentInfoData}
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+      />
     </div>
   );
 };

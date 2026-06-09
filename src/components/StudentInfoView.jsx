@@ -149,6 +149,7 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
     const [search, setSearch] = useState('');
     const [teamFilter, setTeamFilter] = useState('all');
     const [laptopFilter, setLaptopFilter] = useState('all');
+    const [projectFilter, setProjectFilter] = useState('all');
     const [activeTab, setActiveTab] = useState('table');
     const [editingStudent, setEditingStudent] = useState(null);
 
@@ -161,12 +162,15 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
                 s.email.toLowerCase().includes(q) ||
                 s.abcId.includes(q) ||
                 s.club.toLowerCase().includes(q) ||
-                s.project.toLowerCase().includes(q);
+                (s.project && s.project.toLowerCase().includes(q));
             const matchTeam = teamFilter === 'all' || s.team === teamFilter;
             const matchLaptop = laptopFilter === 'all' || s.laptop === laptopFilter;
-            return matchSearch && matchTeam && matchLaptop;
+            const matchProject = projectFilter === 'all' ||
+                (projectFilter === 'allocated' && s.project && s.project.trim() !== '') ||
+                (projectFilter === 'unallocated' && (!s.project || s.project.trim() === ''));
+            return matchSearch && matchTeam && matchLaptop && matchProject;
         });
-    }, [data, search, teamFilter, laptopFilter]);
+    }, [data, search, teamFilter, laptopFilter, projectFilter]);
 
     const handleSave = (updated) => {
         if (setStudentInfoData) {
@@ -221,6 +225,9 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
             'Name': s.name,
             'Roll No': s.roll,
             'Email': s.email,
+            'Phone': s.phone,
+            'Laptop': s.laptop === 'yes' ? 'Yes' : 'No',
+            'Allocated Project / Work': s.project || 'Not Allocated',
             'Parent Name(s)': s.parentName,
             'Parent Contact 1': s.p1,
             'Parent Contact 2': s.p2,
@@ -230,7 +237,8 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
         const ws = XLSX.utils.json_to_sheet(rows);
         ws['!cols'] = [
             { wch: 6 }, { wch: 16 }, { wch: 28 }, { wch: 14 }, { wch: 34 },
-            { wch: 42 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 20 },
+            { wch: 14 }, { wch: 10 }, { wch: 35 }, { wch: 42 }, { wch: 14 },
+            { wch: 14 }, { wch: 12 }, { wch: 20 },
         ];
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Student Info');
@@ -315,7 +323,11 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
 
             {/* Tabs */}
             <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-                {[{ id: 'table', label: 'Full Table' }, { id: 'abc', label: 'ABC IDs & Emails' }].map(tab => (
+                {[
+                    { id: 'table', label: 'Full Table' }, 
+                    { id: 'abc', label: 'ABC IDs & Emails' },
+                    { id: 'project', label: 'Project & Work Allocation' }
+                ].map(tab => (
                     <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                         className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === tab.id ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
                         {tab.label}
@@ -343,6 +355,12 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
                         <option value="all">All Laptops</option>
                         <option value="yes">Has Laptop</option>
                         <option value="no">No Laptop</option>
+                    </select>
+                    <select value={projectFilter} onChange={e => setProjectFilter(e.target.value)}
+                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-400 outline-none bg-white">
+                        <option value="all">All Work Statuses</option>
+                        <option value="allocated">Allocated / With Project</option>
+                        <option value="unallocated">Not Allocated / No Project</option>
                     </select>
                 </div>
             </div>
@@ -465,6 +483,88 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
                                         </td>
                                         {setStudentInfoData && (
                                             <td className="px-4 py-3 text-center">
+                                                <div className="flex justify-center gap-1">
+                                                    <button
+                                                        onClick={() => setEditingStudent(s)}
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-semibold transition-colors"
+                                                    >
+                                                        <Edit2 className="w-3.5 h-3.5" /> Edit
+                                                    </button>
+                                                    {directAccess && (
+                                                        <button
+                                                            onClick={() => handleDelete(s.roll)}
+                                                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold transition-colors"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        )}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* PROJECT & WORK ALLOCATION TAB */}
+            {activeTab === 'project' && (
+                <div className="bg-white rounded-xl shadow-2xl overflow-x-auto">
+                    <table className="min-w-full text-xs divide-y divide-gray-200">
+                        <thead className="bg-indigo-600 text-white">
+                            <tr>
+                                <th className="px-3 py-3 text-left font-semibold uppercase tracking-wider w-10">S.No</th>
+                                <th className="px-3 py-3 text-left font-semibold uppercase tracking-wider">Team</th>
+                                <th className="px-3 py-3 text-left font-semibold uppercase tracking-wider">Name</th>
+                                <th className="px-3 py-3 text-left font-semibold uppercase tracking-wider">Roll No</th>
+                                <th className="px-3 py-3 text-left font-semibold uppercase tracking-wider">Phone</th>
+                                <th className="px-3 py-3 text-center font-semibold uppercase tracking-wider">Laptop</th>
+                                <th className="px-3 py-3 text-left font-semibold uppercase tracking-wider">Allocated Project / Work</th>
+                                {setStudentInfoData && (
+                                    <th className="px-3 py-3 text-center font-semibold uppercase tracking-wider">Actions</th>
+                                )}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {filtered.length === 0 ? (
+                                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">No records found.</td></tr>
+                            ) : filtered.map((s, idx) => {
+                                const c = teamColor(s.team, teams);
+                                return (
+                                    <tr key={s.roll} className="hover:bg-indigo-50/30 transition-colors">
+                                        <td className="px-3 py-2 text-gray-400">{idx + 1}</td>
+                                        <td className="px-3 py-2">
+                                            <span className={`${colorClass(c, 'badge')} px-2 py-0.5 rounded-full font-semibold text-xs whitespace-nowrap`}>{s.team}</span>
+                                        </td>
+                                        <td className="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">{s.name}</td>
+                                        <td className="px-3 py-2 font-mono text-gray-600 whitespace-nowrap">{s.roll}</td>
+                                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{s.phone || <span className="text-gray-300">—</span>}</td>
+                                        <td className="px-3 py-2 text-center">
+                                            {s.laptop === 'yes' ? (
+                                                <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                                                    Yes
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                                                    No
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {s.project ? (
+                                                <span className="bg-blue-50 border border-blue-200 text-blue-800 text-xs px-3 py-1 rounded-lg font-semibold inline-block max-w-[280px] truncate" title={s.project}>
+                                                    {s.project}
+                                                </span>
+                                            ) : (
+                                                <span className="text-red-600 font-bold text-xs italic bg-red-50 border border-red-100 px-2.5 py-0.5 rounded-full">
+                                                    ⚠️ Not Allocated
+                                                </span>
+                                            )}
+                                        </td>
+                                        {setStudentInfoData && (
+                                            <td className="px-3 py-2 text-center">
                                                 <div className="flex justify-center gap-1">
                                                     <button
                                                         onClick={() => setEditingStudent(s)}
