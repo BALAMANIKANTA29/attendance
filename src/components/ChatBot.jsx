@@ -1224,11 +1224,21 @@ export const ChatBot = ({
                                 <tbody className="bg-white divide-y divide-gray-100">
                                   {msg.table.rows.map((row, rIdx) => (
                                     <tr key={rIdx} className="hover:bg-gray-50 transition-colors">
-                                      {row.map((cell, cIdx) => (
-                                        <td key={cIdx} className="px-3 py-2 text-gray-700 whitespace-pre-wrap">
-                                          {cell}
-                                        </td>
-                                      ))}
+                                      {row.map((cell, cIdx) => {
+                                        const cellStr = String(cell);
+                                        const isEmail = cellStr.includes('@') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cellStr.trim());
+                                        return (
+                                          <td key={cIdx} className="px-3 py-2 text-gray-700 whitespace-pre-wrap">
+                                            {isEmail ? (
+                                              <a href={`mailto:${cellStr.trim()}`} className="text-indigo-600 hover:underline">
+                                                {cellStr}
+                                              </a>
+                                            ) : (
+                                              cell
+                                            )}
+                                          </td>
+                                        );
+                                      })}
                                     </tr>
                                   ))}
                                 </tbody>

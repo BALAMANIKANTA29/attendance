@@ -23,14 +23,13 @@ const App = () => {
   const [currentView, setCurrentView] = useState('dailyMarking');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const [students, setStudents] = useLocalStorage('students', []);
+  const [students, setStudents] = useLocalStorage('students', defaultStudentInfoData.map(s => ({
+    id: s.roll,
+    name: s.name,
+    status: null
+  })));
 
-  React.useEffect(() => {
-    // Initial cleanup of any students still in the list that shouldn't be
-    const removedRolls = ['23B21A45C1', '236Q1A4529', '236Q1A4520', '236Q1A4528', '23B21A45C4', '23B21A45D0'];
-    setStudents(prev => prev.filter(s => !removedRolls.includes(s.id || s.roll)));
-    setStudentInfoData(prev => prev.filter(s => !removedRolls.includes(s.roll)));
-  }, []);
+
 
   const [attendanceHistory, setAttendanceHistory] = useLocalStorage('attendanceHistory', {});
   const [lastSubmittedReport, setLastSubmittedReport] = useLocalStorage('lastSubmittedReport', null);

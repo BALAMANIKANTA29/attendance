@@ -102,12 +102,104 @@ app.delete('/api/attendance', (req, res) => {
 
 app.get('/api/settings/:key', (req, res) => {
   const { key } = req.params;
+
+  if (key === 'students') {
+    try {
+      const rows = db.prepare('SELECT * FROM students').all();
+      const mapped = rows.map(s => ({
+        ...s,
+        id: s.roll
+      }));
+      return res.json(mapped);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  if (key === 'studentInfoData') {
+    try {
+      const rows = db.prepare('SELECT * FROM students').all();
+      return res.json(rows);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
   res.json(row ? JSON.parse(row.value) : null);
 });
 
 app.post('/api/settings/:key', (req, res) => {
   const { key } = req.params;
+  
+  if (key === 'students' || key === 'studentInfoData') {
+    const list = req.body;
+    if (!Array.isArray(list)) {
+      return res.status(400).json({ error: 'Payload must be an array' });
+    }
+
+    const dbRows = list.map(s => {
+      const roll = s.roll || s.id;
+      return {
+        roll,
+        name: s.name || null,
+        team: s.team || null,
+        cls: s.cls || null,
+        room: s.room || null,
+        phone: s.phone || null,
+        parentName: s.parentName || null,
+        p1: s.p1 || null,
+        p2: s.p2 || null,
+        email: s.email || null,
+        backlogs: s.backlogs !== undefined ? s.backlogs : (s.backlogCount !== undefined ? s.backlogCount : 0),
+        backlogSubs: s.backlogSubs || null,
+        laptop: s.laptop || null,
+        club: s.club || null,
+        abcId: s.abcId || null,
+        project: s.project || null,
+        status: s.status !== undefined ? s.status : null,
+        s11: s.s11 || null,
+        s12: s.s12 || null,
+        s21: s.s21 || null,
+        s22: s.s22 || null,
+        s31: s.s31 || null
+      };
+    });
+
+    const rollsInPayload = dbRows.map(r => r.roll).filter(Boolean);
+
+    const insert = db.prepare(`
+      INSERT OR REPLACE INTO students (
+        roll, name, team, cls, room, phone, parentName, p1, p2, email, 
+        backlogs, backlogSubs, laptop, club, abcId, project, status,
+        s11, s12, s21, s22, s31
+      ) VALUES (
+        @roll, @name, @team, @cls, @room, @phone, @parentName, @p1, @p2, @email, 
+        @backlogs, @backlogSubs, @laptop, @club, @abcId, @project, @status,
+        @s11, @s12, @s21, @s22, @s31
+      )
+    `);
+
+    const transaction = db.transaction((rows) => {
+      if (rollsInPayload.length > 0) {
+        const placeholders = rollsInPayload.map(() => '?').join(',');
+        db.prepare(`DELETE FROM students WHERE roll NOT IN (${placeholders})`).run(...rollsInPayload);
+      } else {
+        db.prepare(`DELETE FROM students`).run();
+      }
+      for (const row of rows) {
+        insert.run(row);
+      }
+    });
+
+    try {
+      transaction(dbRows);
+      return res.json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
   const value = JSON.stringify(req.body);
   
   try {
