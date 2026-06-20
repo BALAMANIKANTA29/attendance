@@ -1,0 +1,32 @@
+# Vite
+node_modules/
+dist/
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment
+.env
+.env.local
+server/.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database
+*.db
+server/node_modules/
+
+# Temporary / Artifacts
+scratch/
+settings_dump.json
+server/dump_settings.js

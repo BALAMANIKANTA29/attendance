@@ -1,0 +1,21 @@
+export const crtStudentData = [
+  { id: '236Q1A4504', name: 'SANAPATHI SUSMITHA', status: null },
+  { id: '236Q1A4522', name: 'KONDI YUVARAJU', status: null },
+  { id: '23B21A4517', name: 'MANCHALA JYOTSNA', status: null },
+  { id: '23B21A4519', name: 'NALLE TRINAINI VIJAYA LEELA', status: null },
+  { id: '23B21A4524', name: 'KUTCHU SHIVA MANI', status: null },
+  { id: '23B21A4525', name: 'DASARI RAMYA', status: null },
+  { id: '23B21A4526', name: 'GALLA DURGA BHAVANI', status: null },
+  { id: '23B21A4527', name: 'CHITTIBOYINA PUJITHA', status: null },
+  { id: '23B21A4531', name: 'MODI PRANATHI SRI', status: null },
+  { id: '23B21A45A4', name: 'MAGANTI PRASAD', status: null },
+  { id: '23B21A45A5', name: 'NUNNA KARTHIK', status: null },
+  { id: '23B21A45A6', name: 'MANDADI NAGARATNAKAR', status: null },
+  { id: '23B21A45B4', name: 'VANAMA AKHIL', status: null },
+  { id: '23B21A45B7', name: 'NIMMAGADDA GIRISH', status: null },
+  { id: '23B21A45C9', name: 'NARADALA BALA MANIKANTA', status: null },
+  { id: '24B25A4504', name: 'AYYANKI THANUSHA', status: null },
+  { id: '24B25A4507', name: 'ARJAMPUDI MOKSHA VARSHITHA', status: null },
+  { id: '23B21A4520', name: 'MAMILLAPALLI MONIKA', status: null },
+  { id: '23B21A45A2', name: 'KRISHTIPATI RAMANA REDDY', status: null }
+];
