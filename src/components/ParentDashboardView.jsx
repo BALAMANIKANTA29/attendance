@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { 
   User, Calendar, BookOpen, Laptop, Mail, Phone, ShieldCheck, 
   ShieldAlert, Shield, LogOut, CheckCircle2, AlertTriangle, Info,
-  TrendingUp, Award, Compass, Layers, Check, HelpCircle, MessageSquare, Edit2, Save, X
+  TrendingUp, Award, Compass, Layers, Check, HelpCircle, MessageSquare, Edit2, Save, X, MapPin
 } from 'lucide-react';
 
 export const ParentDashboardView = ({ student, attendanceHistory = {}, onLogout, isAdminPreview = false, onUpdateStudent, courses = [], semesters = [] }) => {
@@ -547,6 +547,27 @@ export const ParentDashboardView = ({ student, attendanceHistory = {}, onLogout,
                     <p className="text-gray-800 font-bold">{student.p2 || '--'}</p>
                   </div>
                 </div>
+
+                {(student.village || student.district) && (
+                  <div className="space-y-1 pt-1">
+                    <p className="text-gray-400 font-medium text-[10px] uppercase tracking-wider flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-gray-400" /> Home Address
+                    </p>
+                    <div className="bg-gray-50 border border-gray-100 rounded-lg p-2 space-y-0.5">
+                      {student.village && <p className="text-gray-850 font-bold text-xs">{student.village}</p>}
+                      {(student.mandal || student.district) && (
+                        <p className="text-gray-600 text-[11px] font-semibold">
+                          {[student.mandal, student.district].filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                      {(student.state || student.pincode) && (
+                        <p className="text-gray-500 text-[11px]">
+                          {[student.state, student.pincode].filter(Boolean).join(' — ')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { 
   User, Calendar, BookOpen, Laptop, Mail, Phone, ShieldCheck, 
   ShieldAlert, Shield, LogOut, CheckCircle2, AlertTriangle, Info,
-  TrendingUp, Award, Compass, Layers, Check, FileSpreadsheet, Edit2, Save, X
+  TrendingUp, Award, Compass, Layers, Check, FileSpreadsheet, Edit2, Save, X, MapPin
 } from 'lucide-react';
 
 export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout, isAdminPreview = false, onUpdateStudent, courses = [], semesters = [] }) => {
@@ -24,7 +24,12 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
       s12: student.s12 || '',
       s21: student.s21 || '',
       s22: student.s22 || '',
-      s31: student.s31 || ''
+      s31: student.s31 || '',
+      village: student.village || '',
+      mandal: student.mandal || '',
+      district: student.district || '',
+      state: student.state || '',
+      pincode: student.pincode || ''
     });
     setIsEditMode(true);
   };
@@ -50,6 +55,11 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
       s21: formData.s21,
       s22: formData.s22,
       s31: formData.s31,
+      village: formData.village,
+      mandal: formData.mandal,
+      district: formData.district,
+      state: formData.state,
+      pincode: formData.pincode,
       backlogs: ['s11', 's12', 's21', 's22', 's31'].reduce((total, semKey) => {
         const val = formData[semKey] || '';
         if (!val.trim()) return total;
@@ -448,7 +458,7 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
             </h3>
 
             {isEditMode ? (
-              <div className="space-y-3 text-xs font-semibold flex-1 overflow-y-auto max-h-[250px] pr-1">
+              <div className="space-y-3 text-xs font-semibold flex-1 overflow-y-auto max-h-[300px] pr-1">
                 <div className="space-y-1">
                   <label className="text-gray-400 font-medium text-[10px] uppercase tracking-wider flex items-center gap-1">
                     <Mail className="w-3.5 h-3.5 text-gray-400" /> Email Address
@@ -508,6 +518,49 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
                     />
                   </div>
                 </div>
+
+                <div className="pt-1 space-y-2">
+                  <p className="text-gray-400 font-medium text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-gray-400" /> Home Address
+                  </p>
+                  <input
+                    type="text"
+                    value={formData.village || ''}
+                    onChange={e => setFormData(prev => ({ ...prev, village: e.target.value }))}
+                    placeholder="Village / Street"
+                    className="w-full px-2 py-1 bg-gray-50 border border-gray-300 rounded-lg text-xs font-bold focus:ring-1 focus:ring-emerald-400 outline-none"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={formData.mandal || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, mandal: e.target.value }))}
+                      placeholder="Mandal"
+                      className="w-full px-2 py-1 bg-gray-50 border border-gray-300 rounded-lg text-xs font-bold focus:ring-1 focus:ring-emerald-400 outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={formData.district || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, district: e.target.value }))}
+                      placeholder="District"
+                      className="w-full px-2 py-1 bg-gray-50 border border-gray-300 rounded-lg text-xs font-bold focus:ring-1 focus:ring-emerald-400 outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={formData.state || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, state: e.target.value }))}
+                      placeholder="State"
+                      className="w-full px-2 py-1 bg-gray-50 border border-gray-300 rounded-lg text-xs font-bold focus:ring-1 focus:ring-emerald-400 outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={formData.pincode || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, pincode: e.target.value }))}
+                      placeholder="Pincode"
+                      className="w-full px-2 py-1 bg-gray-50 border border-gray-300 rounded-lg text-xs font-bold focus:ring-1 focus:ring-emerald-400 outline-none"
+                    />
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="space-y-3 text-xs font-semibold flex-1 overflow-y-auto max-h-[250px] pr-1">
@@ -557,6 +610,27 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
                     {student.status || 'Active'}
                   </span>
                 </div>
+
+                {(student.village || student.district) && (
+                  <div className="space-y-1 pt-1">
+                    <p className="text-gray-400 font-medium text-[10px] uppercase tracking-wider flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-gray-400" /> Home Address
+                    </p>
+                    <div className="bg-gray-50 border border-gray-100 rounded-lg p-2 space-y-0.5">
+                      {student.village && <p className="text-gray-850 font-bold text-xs">{student.village}</p>}
+                      {(student.mandal || student.district) && (
+                        <p className="text-gray-600 text-[11px] font-semibold">
+                          {[student.mandal, student.district].filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                      {(student.state || student.pincode) && (
+                        <p className="text-gray-500 text-[11px]">
+                          {[student.state, student.pincode].filter(Boolean).join(' — ')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

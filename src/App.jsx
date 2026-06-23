@@ -82,6 +82,23 @@ const App = () => {
 
   const [studentInfoDataState, setStudentInfoDataState] = useLocalStorage('studentInfoData', defaultStudentInfoData);
 
+  // Migration: patch stored student records with address fields if they are missing
+  React.useEffect(() => {
+    const addressFields = ['village', 'mandal', 'district', 'state', 'pincode'];
+    const needsMigration = studentInfoDataState.some(s => !s.village && !s.district);
+    if (!needsMigration) return;
+    setStudentInfoDataState(prev => prev.map(stored => {
+      const defaults = defaultStudentInfoData.find(d => d.roll.toUpperCase() === (stored.roll || stored.id || '').toUpperCase());
+      if (!defaults) return stored;
+      const patch = {};
+      addressFields.forEach(field => {
+        if (!stored[field] && defaults[field]) patch[field] = defaults[field];
+      });
+      return Object.keys(patch).length > 0 ? { ...stored, ...patch } : stored;
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [courses, setCourses] = useState([]);
 
   const getApiUrl = () => {
