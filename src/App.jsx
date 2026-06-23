@@ -82,20 +82,52 @@ const App = () => {
 
   const [studentInfoDataState, setStudentInfoDataState] = useLocalStorage('studentInfoData', defaultStudentInfoData);
 
-  // Migration: patch stored student records with address fields if they are missing
+  // Migration: merge ALL missing/empty fields from defaultStudentInfoData into cached localStorage records.
+  // Also converts legacy `backlogSubs` field into per-semester `s31` field for dashboard display.
   React.useEffect(() => {
-    const addressFields = ['village', 'mandal', 'district', 'state', 'pincode'];
-    const needsMigration = studentInfoDataState.some(s => !s.village && !s.district);
-    if (!needsMigration) return;
-    setStudentInfoDataState(prev => prev.map(stored => {
-      const defaults = defaultStudentInfoData.find(d => d.roll.toUpperCase() === (stored.roll || stored.id || '').toUpperCase());
+    // Fields that are user-editable and should NEVER be overwritten by defaults
+    const userEditableFields = new Set(['status', 'abcId', 'email', 'phone', 'project', 'club', 'laptop',
+      'parentName', 'p1', 'p2', 's11', 's12', 's21', 's22', 's31', 'backlogs']);
+
+    const semFields = ['s11', 's12', 's21', 's22', 's31'];
+
+    let changed = false;
+    const migrated = studentInfoDataState.map(stored => {
+      const defaults = defaultStudentInfoData.find(
+        d => d.roll.toUpperCase() === (stored.roll || stored.id || '').toUpperCase()
+      );
       if (!defaults) return stored;
+
       const patch = {};
-      addressFields.forEach(field => {
-        if (!stored[field] && defaults[field]) patch[field] = defaults[field];
+
+      // 1. Merge all non-editable missing fields (village, mandal, district, state, pincode, team, cls, room, name, roll etc.)
+      Object.keys(defaults).forEach(field => {
+        if (userEditableFields.has(field)) return;
+        if (stored[field] === undefined || stored[field] === null || stored[field] === '') {
+          if (defaults[field] !== undefined && defaults[field] !== null && defaults[field] !== '') {
+            patch[field] = defaults[field];
+          }
+        }
       });
-      return Object.keys(patch).length > 0 ? { ...stored, ...patch } : stored;
-    }));
+
+      // 2. If ALL semester backlog fields are empty AND default data has backlogSubs,
+      //    put all backlogs into s31 (current/most-recent semester) so dashboards show them.
+      const allSemEmpty = semFields.every(k => !stored[k] || stored[k].trim() === '');
+      if (allSemEmpty && defaults.backlogSubs && defaults.backlogSubs.trim() !== '') {
+        patch.s31 = defaults.backlogSubs;
+        patch.backlogs = defaults.backlogSubs.split(',').filter(s => s.trim()).length;
+      }
+
+      if (Object.keys(patch).length > 0) {
+        changed = true;
+        return { ...stored, ...patch };
+      }
+      return stored;
+    });
+
+    if (changed) {
+      setStudentInfoDataState(migrated);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
