@@ -66,18 +66,44 @@ const defaultParentData = [
     { sno: 67, hno: '236Q1A4532', classId: 'K12AIDHA', staying: 'CLG HOSTEL', dept: 45, name: 'PEDDINTI HARISH KUMAR', bCode: 'AID', stContact: '6301114293', parentNames: 'PEDDINTI VENKATARAMANA/YEDURESU KONDAMMA', p1: '8639313624', p2: '' },
 ];
 
+const WhatsAppIcon = ({ className = "w-3 h-3" }) => (
+    <svg 
+        className={className} 
+        fill="currentColor" 
+        viewBox="0 0 24 24" 
+        xmlns="http://www.w3.org/2000/svg"
+    >
+        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.73-1.464L0 24zm6.59-4.846c1.6.95 3.197 1.451 4.793 1.457 5.48-.002 9.935-4.462 9.937-9.945.002-2.657-1.032-5.155-2.905-7.03C16.545 1.76 14.053.727 11.4.729c-5.48.002-9.935 4.461-9.937 9.944-.002 2.012.518 3.98 1.508 5.691L1.936 21.8l5.63-1.478c.002-.001.002-.001 0 0zm11.758-7.054c-.314-.157-1.86-.918-2.148-1.023-.289-.105-.499-.157-.709.157-.21.314-.813 1.023-.996 1.233-.183.21-.366.236-.68.079-.314-.158-1.327-.489-2.528-1.562-.935-.836-1.567-1.868-1.75-2.183-.183-.314-.02-.485.137-.641.141-.14.314-.366.47-.549.158-.183.21-.314.314-.523.105-.21.052-.393-.026-.549-.079-.157-.709-1.706-.97-2.336-.254-.614-.512-.53-.709-.54-.183-.01-.393-.01-.603-.01-.21 0-.551.079-.84.393-.289.314-1.102 1.078-1.102 2.63 0 1.552 1.129 3.056 1.286 3.266.158.21 2.221 3.391 5.38 4.757.753.325 1.341.519 1.799.665.756.24 1.444.207 1.989.126.608-.09 1.86-.76 2.122-1.458.262-.697.262-1.296.183-1.42-.078-.124-.289-.21-.603-.367z"/>
+    </svg>
+);
+
 const PhoneCell = ({ number }) => {
-    if (!number || number === 'NA' || number.trim() === '') {
+    if (!number || number === 'NA' || number.trim() === '' || number === '—') {
         return <span className="text-gray-300 text-xs">—</span>;
     }
+    const cleanPhone = number.replace(/[^0-9]/g, '');
+    const waPhone = cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone;
+    const waLink = `https://wa.me/${waPhone}`;
+
     return (
-        <a
-            href={`tel:${number}`}
-            className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs font-mono font-semibold hover:underline"
-        >
-            <Phone className="w-3 h-3 shrink-0" />
-            {number}
-        </a>
+        <div className="flex items-center gap-2">
+            <a
+                href={`tel:${number}`}
+                className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs font-mono font-semibold hover:underline"
+            >
+                <Phone className="w-3 h-3 shrink-0" />
+                {number}
+            </a>
+            <a
+                href={waLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center p-1 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition-colors border border-green-200"
+                title="Send WhatsApp Message"
+            >
+                <WhatsAppIcon className="w-3.5 h-3.5" />
+            </a>
+        </div>
     );
 };
 

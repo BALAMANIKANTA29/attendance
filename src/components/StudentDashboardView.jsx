@@ -2,12 +2,56 @@ import React, { useMemo, useState } from 'react';
 import { 
   User, Calendar, BookOpen, Laptop, Mail, Phone, ShieldCheck, 
   ShieldAlert, Shield, LogOut, CheckCircle2, AlertTriangle, Info,
-  TrendingUp, Award, Compass, Layers, Check, FileSpreadsheet, Edit2, Save, X, MapPin
+  TrendingUp, Award, Compass, Layers, Check, FileSpreadsheet, Edit2, Save, X, MapPin, Megaphone, Printer
 } from 'lucide-react';
 
-export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout, isAdminPreview = false, onUpdateStudent, courses = [], semesters = [] }) => {
+const PhoneLink = ({ number, fallback = "Not Recorded" }) => {
+  if (!number || number === '--' || number === 'NA' || number.trim() === '') {
+    return <p className="text-gray-850 font-bold">{fallback}</p>;
+  }
+  const cleanPhone = number.replace(/[^0-9]/g, '');
+  const waPhone = cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone;
+  const waLink = `https://wa.me/${waPhone}`;
+
+  return (
+    <div className="flex items-center gap-2 mt-0.5">
+      <a
+        href={`tel:${number}`}
+        className="text-gray-850 font-bold hover:text-emerald-600 hover:underline transition-colors"
+      >
+        {number}
+      </a>
+      <a
+        href={waLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center justify-center p-1 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition-colors border border-green-200"
+        title="Send WhatsApp Message"
+      >
+        <svg 
+          className="w-3 h-3" 
+          fill="currentColor" 
+          viewBox="0 0 24 24" 
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.73-1.464L0 24zm6.59-4.846c1.6.95 3.197 1.451 4.793 1.457 5.48-.002 9.935-4.462 9.937-9.945.002-2.657-1.032-5.155-2.905-7.03C16.545 1.76 14.053.727 11.4.729c-5.48.002-9.935 4.461-9.937 9.944-.002 2.012.518 3.98 1.508 5.691L1.936 21.8l5.63-1.478c.002-.001.002-.001 0 0zm11.758-7.054c-.314-.157-1.86-.918-2.148-1.023-.289-.105-.499-.157-.709.157-.21.314-.813 1.023-.996 1.233-.183.21-.366.236-.68.079-.314-.158-1.327-.489-2.528-1.562-.935-.836-1.567-1.868-1.75-2.183-.183-.314-.02-.485.137-.641.141-.14.314-.366.47-.549.158-.183.21-.314.314-.523.105-.21.052-.393-.026-.549-.079-.157-.709-1.706-.97-2.336-.254-.614-.512-.53-.709-.54-.183-.01-.393-.01-.603-.01-.21 0-.551.079-.84.393-.289.314-1.102 1.078-1.102 2.63 0 1.552 1.129 3.056 1.286 3.266.158.21 2.221 3.391 5.38 4.757.753.325 1.341.519 1.799.665.756.24 1.444.207 1.989.126.608-.09 1.86-.76 2.122-1.458.262-.697.262-1.296.183-1.42-.078-.124-.289-.21-.603-.367z"/>
+        </svg>
+      </a>
+    </div>
+  );
+};
+
+export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout, isAdminPreview = false, onUpdateStudent, courses = [], semesters = [], announcements = [] }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({});
+
+  const studentAnnouncements = useMemo(() => {
+    return (announcements || []).filter(ann => 
+      ann.target === 'everyone' || 
+      ann.target === 'students' || 
+      (ann.target === 'team' && (ann.targetTeam || '').toLowerCase() === (student.team || '').toLowerCase())
+    );
+  }, [announcements, student.team]);
 
   const startEditing = () => {
     setFormData({
@@ -183,6 +227,12 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
             )
           )}
           <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-255 text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95 print:hidden"
+          >
+            <Printer className="w-4 h-4" /> Print / Save PDF
+          </button>
+          <button
             onClick={onLogout}
             className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm"
           >
@@ -192,26 +242,60 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
       </header>
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+      <main className="max-w-7xl mx-auto p-4 md:p-8 space-y-6 print:p-0 print:space-y-4">
         {/* Welcome Greeting Banner */}
-        <div className="bg-gradient-to-r from-emerald-600 to-green-700 rounded-3xl shadow-xl p-6 md:p-8 text-white relative overflow-hidden">
-          <div className="absolute top-[-40%] right-[-10%] w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-[-30%] left-[-5%] w-60 h-60 bg-white/5 rounded-full blur-2xl"></div>
+        <div className="bg-gradient-to-r from-emerald-600 to-green-700 rounded-3xl shadow-xl p-6 md:p-8 text-white relative overflow-hidden print:bg-none print:bg-white print:text-gray-900 print:border print:border-gray-300 print:shadow-none print:p-5 print:rounded-2xl">
+          <div className="absolute top-[-40%] right-[-10%] w-72 h-72 bg-white/10 rounded-full blur-3xl print:hidden"></div>
+          <div className="absolute bottom-[-30%] left-[-5%] w-60 h-60 bg-white/5 rounded-full blur-2xl print:hidden"></div>
 
           <div className="relative z-10 space-y-2">
-            <span className="bg-emerald-500/30 text-emerald-100 text-[10px] font-black tracking-widest px-3 py-1 rounded-full uppercase">
+            <span className="bg-emerald-500/30 text-emerald-100 text-[10px] font-black tracking-widest px-3 py-1 rounded-full uppercase print:bg-emerald-50 print:text-emerald-800 print:border print:border-emerald-200">
               STUDENT PROFILE
             </span>
-            <h2 className="text-2xl md:text-3xl font-black">{student.name}</h2>
-            <div className="flex flex-wrap gap-4 text-sm font-semibold text-emerald-100/90 pt-1">
-              <span className="flex items-center gap-1.5"><Layers className="w-4 h-4" /> Team: {student.team}</span>
-              <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> Class: {student.cls} · Room: {student.room}</span>
+            <h2 className="text-2xl md:text-3xl font-black print:text-gray-900">{student.name}</h2>
+            <div className="flex flex-wrap gap-4 text-sm font-semibold text-emerald-100/90 pt-1 print:text-gray-600">
+              <span className="flex items-center gap-1.5"><Layers className="w-4 h-4 print:text-gray-500" /> Team: {student.team}</span>
+              <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 print:text-gray-500" /> Class: {student.cls} · Room: {student.room}</span>
             </div>
           </div>
         </div>
 
+        {/* Announcements Feed */}
+        {studentAnnouncements.length > 0 && (
+          <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-md space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+            <h3 className="text-base font-bold text-gray-800 flex items-center gap-2 pb-2 border-b border-gray-100">
+              <Megaphone className="w-5 h-5 text-emerald-600 animate-pulse" /> Latest Broadcast Announcements
+            </h3>
+            <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+              {studentAnnouncements.map(ann => {
+                const isWarning = ann.category === 'warning';
+                const isEvent = ann.category === 'event';
+                const isHoliday = ann.category === 'holiday';
+                const style = isWarning 
+                  ? 'bg-rose-50 border-rose-100 text-rose-800' 
+                  : isHoliday 
+                    ? 'bg-sky-50 border-sky-100 text-sky-800' 
+                    : isEvent 
+                      ? 'bg-amber-50 border-amber-100 text-amber-800' 
+                      : 'bg-emerald-50 border-emerald-100 text-emerald-800';
+
+                return (
+                  <div key={ann.id} className={`p-4 rounded-2xl border text-xs leading-relaxed space-y-1.5 ${style}`}>
+                    <div className="flex justify-between items-center flex-wrap gap-2">
+                      <span className="font-bold text-sm text-gray-900">{ann.title}</span>
+                      <span className="text-[9px] uppercase tracking-wider font-bold opacity-75">{ann.category}</span>
+                    </div>
+                    <p className="text-gray-700">{ann.message}</p>
+                    <p className="text-[10px] text-gray-400 font-semibold">{new Date(ann.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 print:grid-cols-2 gap-6 print:gap-4">
           {/* Card 1: Attendance Analytics */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-150 p-6 flex flex-col items-center text-center space-y-4">
             <h3 className="text-base font-bold text-gray-800 w-full text-left flex items-center gap-2 border-b border-gray-100 pb-3">
@@ -577,9 +661,7 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
                   <p className="text-gray-400 font-medium text-[10px] uppercase tracking-wider flex items-center gap-1">
                     <Phone className="w-3.5 h-3.5 text-gray-400" /> Student Phone
                   </p>
-                  <p className="text-gray-850 font-bold">
-                    {student.phone || 'Not Recorded'}
-                  </p>
+                  <PhoneLink number={student.phone} fallback="Not Recorded" />
                 </div>
 
                 <div className="space-y-1">
@@ -592,11 +674,11 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">
                     <p className="text-gray-400 font-medium text-[10px] uppercase tracking-wider">Parent Contact 1</p>
-                    <p className="text-gray-850 font-bold">{student.p1 || '--'}</p>
+                    <PhoneLink number={student.p1} fallback="--" />
                   </div>
                   <div className="space-y-1">
                     <p className="text-gray-400 font-medium text-[10px] uppercase tracking-wider">Parent Contact 2</p>
-                    <p className="text-gray-850 font-bold">{student.p2 || '--'}</p>
+                    <PhoneLink number={student.p2} fallback="--" />
                   </div>
                 </div>
 
@@ -611,11 +693,11 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
                   </span>
                 </div>
 
-                {(student.village || student.district) && (
-                  <div className="space-y-1 pt-1">
-                    <p className="text-gray-400 font-medium text-[10px] uppercase tracking-wider flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-gray-400" /> Home Address
-                    </p>
+                <div className="space-y-1 pt-1">
+                  <p className="text-gray-400 font-medium text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-gray-400" /> Home Address
+                  </p>
+                  {student.village || student.district ? (
                     <div className="bg-gray-50 border border-gray-100 rounded-lg p-2 space-y-0.5">
                       {student.village && <p className="text-gray-850 font-bold text-xs">{student.village}</p>}
                       {(student.mandal || student.district) && (
@@ -629,8 +711,10 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
                         </p>
                       )}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <p className="text-gray-850 font-bold">Not Recorded</p>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -645,7 +729,7 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
             <p className="text-xs text-gray-400 mt-0.5">Check key requirements and cutoff eligibility criteria for campus drives</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-4">
             {profileChecklist.map((item, index) => (
               <div 
                 key={index} 

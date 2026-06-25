@@ -799,7 +799,24 @@ export const ChatBot = ({
         };
       }
       
-      if (/\b(email|mail|gmail|address)\b/i.test(cleanQuery)) {
+      if (/\b(address|village|mandal|district|state|pincode|home\s*address)\b/i.test(cleanQuery)) {
+        const fullAddress = [
+          targetStudent.village,
+          targetStudent.mandal,
+          targetStudent.district,
+          targetStudent.state,
+          targetStudent.pincode
+        ].filter(Boolean).join(', ');
+        return {
+          text: `Home Address for ${name}:`,
+          table: {
+            headers: ["Student Name", "Home Address"],
+            rows: [[name, fullAddress || 'Not recorded']]
+          }
+        };
+      }
+
+      if (/\b(email|mail|gmail)\b/i.test(cleanQuery)) {
         return {
           text: `Email for ${name}:`,
           table: {
@@ -1274,23 +1291,147 @@ export const ChatBot = ({
       }
     }
 
-    // --- 7. Final Fallback ---
+    // --- 7. Smart Vague / General Intent Handler ---
+
+    // "who" questions about the class
+    if (/\bwho\b/i.test(cleanQuery)) {
+      if (/\btopper|best|rank\b/i.test(cleanQuery)) {
+        const cleared = allSt.filter(s => !s.backlogs || s.backlogs === 0);
+        return { text: `${cleared.length} students have zero backlogs in the class. That's your top performers!` };
+      }
+      if (/\bmost backlog|most fail\b/i.test(cleanQuery)) {
+        const sorted = [...allSt].filter(s => s.backlogs > 0).sort((a, b) => b.backlogs - a.backlogs).slice(0, 5);
+        if (sorted.length === 0) return { text: 'No student has any backlogs currently!' };
+        const rows = sorted.map(s => [s.roll, s.name, s.backlogs]);
+        return { text: 'Students with the most backlogs:', table: { headers: ['Roll No', 'Name', 'Backlogs'], rows } };
+      }
+      // Generic "who" → show all students list
+      const rows = allSt.slice(0, 20).map(s => [s.roll, s.name, s.team || 'N/A']);
+      return {
+        text: `Here are the students in the class (showing ${Math.min(20, allSt.length)} of ${allSt.length}):`,
+        table: { headers: ['Roll No', 'Name', 'Team'], rows }
+      };
+    }
+
+    // "how many" general counts
+    if (/\bhow many\b/i.test(cleanQuery)) {
+      if (/\bbacklog\b/i.test(cleanQuery)) {
+        const n = allSt.filter(s => s.backlogs > 0).length;
+        return { text: `${n} out of ${allSt.length} students have active backlogs.` };
+      }
+      if (/\blaptop\b/i.test(cleanQuery)) {
+        const yes = allSt.filter(s => s.laptop === 'yes').length;
+        return { text: `${yes} students have a laptop, and ${allSt.length - yes} do not.` };
+      }
+      if (/\bteam\b/i.test(cleanQuery)) {
+        const teams = new Set(allSt.map(s => s.team)).size;
+        return { text: `There are ${teams} teams in the class.` };
+      }
+      if (/\bclub\b/i.test(cleanQuery)) {
+        const inClub = allSt.filter(s => s.club && s.club !== '--' && s.club.trim() !== '').length;
+        return { text: `${inClub} students are part of a club.` };
+      }
+      if (/\bproject\b/i.test(cleanQuery)) {
+        const withProj = allSt.filter(s => s.project && s.project.trim() !== '').length;
+        return { text: `${withProj} students have been allocated a project.` };
+      }
+      return { text: `There are ${allSt.length} students total in the portal.` };
+    }
+
+    // "show all" / "list all" / "give me"
+    if (/\b(show all|list all|give me|display all)\b/i.test(cleanQuery)) {
+      if (/\bstudent|class|member\b/i.test(cleanQuery)) {
+        const rows = allSt.map((s, i) => [i + 1, s.roll, s.name, s.team || 'N/A']);
+        return { text: `All ${allSt.length} students in the class:`, table: { headers: ['S.No', 'Roll No', 'Name', 'Team'], rows } };
+      }
+      if (/\bteam\b/i.test(cleanQuery)) {
+        const teamMap = {};
+        allSt.forEach(s => { teamMap[s.team] = (teamMap[s.team] || 0) + 1; });
+        const rows = Object.entries(teamMap).map(([t, c]) => [t, c]);
+        return { text: 'Team-wise student count:', table: { headers: ['Team', 'Count'], rows } };
+      }
+      if (/\bbacklog\b/i.test(cleanQuery)) {
+        const bl = allSt.filter(s => s.backlogs > 0).sort((a, b) => b.backlogs - a.backlogs);
+        const rows = bl.map(s => [s.roll, s.name, s.backlogs]);
+        return { text: `All ${bl.length} students with backlogs:`, table: { headers: ['Roll No', 'Name', 'Backlogs'], rows } };
+      }
+    }
+
+    // "attendance" general query
+    if (/\battendance\b/i.test(cleanQuery)) {
+      const dates = Object.keys(attendanceHistory || {});
+      if (dates.length === 0) {
+        return { text: "No attendance has been recorded yet. Go to 'Mark Attendance' to start!" };
+      }
+      const latest = dates.sort().slice(-1)[0];
+      const reports = attendanceHistory[latest] || [];
+      let p = 0, t = 0;
+      reports.forEach(r => (r.students || []).forEach(s => { t++; if (s.status === 'P') p++; }));
+      const pct = t > 0 ? Math.round((p / t) * 100) : 0;
+      return {
+        text: `Attendance Summary:\n- Total days recorded: ${dates.length}\n- Latest date: ${latest}\n- Last session: ${p}/${t} present (${pct}%)\n\nAsk "who is absent today?", "low attendance students", or a student name for more details!`
+      };
+    }
+
+    // "backlog" general
+    if (/\bbacklog\b/i.test(cleanQuery)) {
+      const n = allSt.filter(s => s.backlogs > 0).length;
+      const total = allSt.reduce((acc, s) => acc + (Number(s.backlogs) || 0), 0);
+      return { text: `Backlog Summary:\n- ${n} students have active backlogs\n- ${total} total backlog subjects\n\nAsk "who has backlogs?", "backlogs in 1-1", or a student name to dig deeper!` };
+    }
+
+    // "student" general
+    if (/\bstudent\b/i.test(cleanQuery)) {
+      return { text: `The class has ${allSt.length} students. You can:\n- Search by name or roll number\n- Ask "show all students"\n- Ask about a specific student like "show Akhil's details"` };
+    }
+
+    // "dashboard" or "summary" or "overview"
+    if (/\b(dashboard|summary|overview|stats|statistics|report)\b/i.test(cleanQuery)) {
+      const absentToday = allSt.filter(s => s.status === 'absent').length;
+      const withBacklogs = allSt.filter(s => s.backlogs > 0).length;
+      const noLaptop = allSt.filter(s => s.laptop === 'no').length;
+      const daysRecorded = Object.keys(attendanceHistory || {}).length;
+      return {
+        text: `Portal Overview for ${classInfo?.name || 'K12AIDHA'}:`,
+        table: {
+          headers: ['Metric', 'Value'],
+          rows: [
+            ['Total Students', allSt.length],
+            ['Absent Today', absentToday],
+            ['Students with Backlogs', withBacklogs],
+            ['No Laptop', noLaptop],
+            ['Attendance Days Logged', daysRecorded],
+            ['Min Attendance Policy', `${attendancePolicy?.minimumAttendance || 75}%`]
+          ]
+        }
+      };
+    }
+
+    // Very vague single-word or short queries — be friendly and guide
+    if (cleanQuery.split(/\s+/).length <= 2) {
+      const suggestions = [
+        `Try asking: "Who is absent today?"`,
+        `Try: "Show backlogs in 1-1"`,
+        `Try: "How many students have backlogs?"`,
+        `Try: "[Student Name]'s parent contact"`,
+        `Try: "Low attendance students"`,
+        `Try: "Show all students"`,
+      ];
+      return {
+        text: `I'm not sure what you're looking for with "${query}". Here are some things you can ask me:\n\n` +
+          suggestions.join('\n')
+      };
+    }
+
+    // Last resort — still try to be helpful
     return {
-      text: "I didn't quite catch that. Here are some examples of what you can ask me:\n\n" +
-            "**Paste Data to Import**:\n" +
-            '- Paste student records directly in TSV/CSV format to import them.\n' +
-            '- "Import/sync database from chat history"\n\n' +
-            "**Update Records Directly**:\n" +
-            '- "Change student 23B21A4517 room to 104"\n' +
-            '- "Set NUNNA KARTHIK phone to 9876543210"\n\n' +
-            "**Specific Attribute Queries**:\n" +
-            '- "What is M.PRASAD\'s parent contact?"\n' +
-            '- "Show Akhil\'s laptop status"\n\n' +
-            "**General Search**:\n" +
-            '- "Room 103" or "NCC club laptop no"\n\n' +
-            "**Class-Wide Queries**:\n" +
-            '- "Who is absent today?"\n' +
-            '- "Who has backlogs in 1-2?"'
+      text: `I couldn't find a specific answer for "${query}", but here's what I can help with:\n\n` +
+        `📋 **Student Info** — Ask about any student by name or roll number\n` +
+        `📅 **Attendance** — "Who is absent?", "Low attendance students"\n` +
+        `📚 **Backlogs** — "Who has backlogs?", "Backlogs in 1-1"\n` +
+        `🔀 **Navigation** — "Go to attendance log", "Open admin settings"\n` +
+        `📊 **Stats** — "How many students?", "Class overview"\n\n` +
+        `Try rephrasing your question with a student name, roll number, or a keyword like "attendance", "backlog", "phone", etc.`
     };
   };
 

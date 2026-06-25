@@ -269,9 +269,9 @@ export const AdminSettingsView = ({
                   <h4 className="font-semibold text-green-900">Current Semester</h4>
                   <p className="text-green-700">{classInfo.semester}</p>
                 </div>
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-purple-900">Academic Year</h4>
-                  <p className="text-purple-700">{classInfo.academicYear}</p>
+                <div className="bg-indigo-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-indigo-900">Academic Year</h4>
+                  <p className="text-indigo-700">{classInfo.academicYear}</p>
                 </div>
               </div>
             )}

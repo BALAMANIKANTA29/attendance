@@ -35,17 +35,21 @@ export const LoginView = ({ onLogin, studentInfoData = [] }) => {
       return;
     }
 
-    // ── 3. Student — Roll Number as both ID and password ──────────
-    const rollUpper = id.toUpperCase();
-    const passUpper = pass.toUpperCase();
+    // ── 3. Student — Roll Number or Email as both ID and password ──────────
+    const idClean = id.toLowerCase();
+    const passClean = pass.toLowerCase();
     const studentMatch = studentInfoData.find(
-      s => s.roll.toUpperCase() === rollUpper
+      s => (s.roll || '').toLowerCase() === idClean || (s.email || '').toLowerCase() === idClean
     );
-    if (studentMatch && rollUpper === passUpper) {
-      setSuccessMsg(`Welcome, ${studentMatch.name}!`);
-      setIsLoading(true);
-      setTimeout(() => { onLogin('student', studentMatch.roll); setIsLoading(false); }, 800);
-      return;
+    if (studentMatch) {
+      const matchRoll = (studentMatch.roll || '').toLowerCase();
+      const matchEmail = (studentMatch.email || '').toLowerCase();
+      if (passClean === matchRoll || passClean === matchEmail) {
+        setSuccessMsg(`Welcome, ${studentMatch.name}!`);
+        setIsLoading(true);
+        setTimeout(() => { onLogin('student', studentMatch.roll); setIsLoading(false); }, 800);
+        return;
+      }
     }
 
     // ── 4. Parent — Registered mobile as both ID and password ─────
@@ -104,7 +108,7 @@ export const LoginView = ({ onLogin, studentInfoData = [] }) => {
           <div className="space-y-4">
             <div className="space-y-1">
               <label htmlFor="credential" className="block text-xs font-bold uppercase tracking-wider text-emerald-700 ml-1">
-                ID / Roll No / Mobile
+                ID / Roll No / Email / Mobile
               </label>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors">
@@ -116,7 +120,7 @@ export const LoginView = ({ onLogin, studentInfoData = [] }) => {
                   value={credential}
                   onChange={(e) => { setCredential(e.target.value); setError(''); setSuccessMsg(''); }}
                   onKeyDown={handleKeyDown}
-                  placeholder="Admin ID / Roll No / Phone"
+                  placeholder="Admin ID / Roll No / Email / Phone"
                   autoComplete="username"
                   className="w-full pl-12 pr-4 py-3 bg-gray-50/50 border border-gray-100 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all duration-300 font-semibold"
                 />

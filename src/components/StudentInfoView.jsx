@@ -5,7 +5,7 @@ import { studentInfoData as defaultData, teams as defaultTeams } from '../data/s
 import { getLocalDateString } from '../utils/dateUtils';
 
 const TEAM_COLORS = [
-    'indigo', 'violet', 'blue', 'cyan', 'teal', 'emerald', 'green', 'lime', 'amber', 'orange', 'rose', 'pink'
+    'indigo', 'sky', 'blue', 'cyan', 'teal', 'emerald', 'green', 'lime', 'amber', 'orange', 'rose', 'pink'
 ];
 
 const teamColor = (team, teams) => {
@@ -16,7 +16,7 @@ const teamColor = (team, teams) => {
 const colorClass = (c, type) => {
     const map = {
         indigo: { badge: 'bg-indigo-100 text-indigo-700', header: 'bg-indigo-600' },
-        violet: { badge: 'bg-violet-100 text-violet-700', header: 'bg-violet-600' },
+        sky:    { badge: 'bg-sky-100 text-sky-700', header: 'bg-sky-600' },
         blue: { badge: 'bg-blue-100 text-blue-700', header: 'bg-blue-600' },
         cyan: { badge: 'bg-cyan-100 text-cyan-700', header: 'bg-cyan-700' },
         teal: { badge: 'bg-teal-100 text-teal-700', header: 'bg-teal-600' },
@@ -392,7 +392,7 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
                     <p className="text-2xl font-bold text-gray-900">{data.length}</p>
                     <p className="text-sm text-gray-500">Total Students</p>
                 </div>
-                <div className="bg-white rounded-xl shadow p-4 border-l-4 border-violet-500">
+                <div className="bg-white rounded-xl shadow p-4 border-l-4 border-sky-500">
                     <p className="text-2xl font-bold text-gray-900">{teams.length}</p>
                     <p className="text-sm text-gray-500">Teams</p>
                 </div>
@@ -496,7 +496,7 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
                                         </td>
                                         <td className="px-3 py-2">
                                             {s.club && s.club !== '--' && s.club !== '---'
-                                                ? <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-semibold">{s.club}</span>
+                                                ? <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-semibold">{s.club}</span>
                                                 : <span className="text-gray-300">—</span>}
                                         </td>
                                         <td className="px-3 py-2 font-mono text-indigo-700 text-xs whitespace-nowrap">

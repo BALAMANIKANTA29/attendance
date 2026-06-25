@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, UserCheck, LogOut, Menu, X, CheckCircle, Users, Settings, BookOpen, BarChart2, PhoneCall, Info } from 'lucide-react';
+import { Calendar, UserCheck, LogOut, Menu, X, CheckCircle, Users, Settings, BookOpen, BarChart2, PhoneCall, Info, ChevronDown, LayoutDashboard, Megaphone } from 'lucide-react';
 
 import { DailyMarkingView } from './components/DailyMarkingView';
 import { PrintReportView } from './components/PrintReportView';
@@ -14,6 +14,8 @@ import { StudentInfoView } from './components/StudentInfoView';
 import { StudentDashboardView } from './components/StudentDashboardView';
 import { ParentDashboardView } from './components/ParentDashboardView';
 import { ChatBot } from './components/ChatBot';
+import { AdminDashboardView } from './components/AdminDashboardView';
+import { AnnouncementsView } from './components/AnnouncementsView';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { studentInfoData as defaultStudentInfoData } from './data/studentInfoData';
 import { crtStudentData as defaultCrtStudentData } from './data/crtStudentData';
@@ -28,6 +30,11 @@ const App = () => {
   const [previewStudentRoll, setPreviewStudentRoll] = useState(null);
   const [currentView, setCurrentView] = useState('dailyMarking');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState({
+    attendance: true,
+    students:   false,
+    backlogs:   false,
+  });
 
   const [studentsState, setStudentsState] = useLocalStorage('students', defaultStudentInfoData.map(s => ({
     id: s.roll,
@@ -39,6 +46,16 @@ const App = () => {
 
   const [attendanceHistory, setAttendanceHistory] = useLocalStorage('attendanceHistory', {});
   const [lastSubmittedReport, setLastSubmittedReport] = useLocalStorage('lastSubmittedReport', null);
+  const [announcements, setAnnouncements] = useLocalStorage('announcements', [
+    {
+      id: 'default-1',
+      title: 'Welcome to the Portal',
+      message: 'All students and parents are requested to review their profile information and fill in missing fields.',
+      category: 'info',
+      target: 'everyone',
+      date: new Date().toISOString()
+    }
+  ]);
 
   const [crtStudents, setCrtStudents] = useLocalStorage('crtStudents', defaultCrtStudentData);
 
@@ -63,6 +80,18 @@ const App = () => {
       }
     }
   }, [userRole, currentView, isAuthenticated]);
+
+  // Auto-expand sidebar group when active view changes
+  React.useEffect(() => {
+    const attendanceIds = ['dailyMarking', 'dailyLog', 'crtMarking', 'crtLog'];
+    const studentsIds   = ['classMembers', 'studentInfo'];
+    const backlogsIds   = ['backlogs', 'subjectWise'];
+    setOpenGroups(prev => ({
+      attendance: attendanceIds.includes(currentView) ? true : prev.attendance,
+      students:   studentsIds.includes(currentView)   ? true : prev.students,
+      backlogs:   backlogsIds.includes(currentView)   ? true : prev.backlogs,
+    }));
+  }, [currentView]);
 
   const [crtAttendanceHistory, setCrtAttendanceHistory] = useLocalStorage('crtAttendanceHistory', {});
   const [crtLastSubmittedReport, setCrtLastSubmittedReport] = useLocalStorage('crtLastSubmittedReport', null);
@@ -171,6 +200,10 @@ const App = () => {
   const students = studentsState;
   const studentInfoData = studentInfoDataState;
 
+  const teams = React.useMemo(() => {
+    return Array.from(new Set(studentInfoData.map(s => s.team).filter(Boolean))).sort();
+  }, [studentInfoData]);
+
   const setStudents = (value) => {
     setStudentsState(prev => {
       const nextValue = value instanceof Function ? value(prev) : value;
@@ -269,7 +302,7 @@ const App = () => {
     } else {
       setAdminUsername(rollOrUsername || '');
       setCurrentStudentRoll(null);
-      setCurrentView('dailyMarking');
+      setCurrentView('dashboard');
       setDirectAccess(true);
     }
   };
@@ -343,6 +376,7 @@ const App = () => {
         onUpdateStudent={updateStudentInBothStates}
         courses={courses}
         semesters={semesters}
+        announcements={announcements}
       />
     ) : (
       <div className="p-8 text-center text-red-500 font-bold font-['Times_New_Roman',_serif] min-h-screen bg-gray-50 flex flex-col items-center justify-center space-y-4">
@@ -364,6 +398,7 @@ const App = () => {
         onUpdateStudent={updateStudentInBothStates}
         courses={courses}
         semesters={semesters}
+        announcements={announcements}
       />
     ) : (
       <div className="p-8 text-center text-red-500 font-bold font-['Times_New_Roman',_serif] min-h-screen bg-gray-50 flex flex-col items-center justify-center space-y-4">
@@ -386,6 +421,7 @@ const App = () => {
         onUpdateStudent={updateStudentInBothStates}
         courses={courses}
         semesters={semesters}
+        announcements={announcements}
       />
     ) : (
       <div className="p-8 text-center text-red-500 font-bold font-['Times_New_Roman',_serif] min-h-screen bg-gray-50 flex flex-col items-center justify-center space-y-4">
@@ -408,6 +444,7 @@ const App = () => {
         onUpdateStudent={updateStudentInBothStates}
         courses={courses}
         semesters={semesters}
+        announcements={announcements}
       />
     ) : (
       <div className="p-8 text-center text-red-500 font-bold font-['Times_New_Roman',_serif] min-h-screen bg-gray-50 flex flex-col items-center justify-center space-y-4">
@@ -435,6 +472,22 @@ const App = () => {
     }
 
     switch (currentView) {
+      case 'dashboard':
+        return (
+          <AdminDashboardView
+            students={students}
+            attendanceHistory={attendanceHistory}
+            crtStudents={crtStudents}
+            crtAttendanceHistory={crtAttendanceHistory}
+            studentInfoData={studentInfoData}
+            classInfo={classInfo}
+            attendancePolicy={attendancePolicy}
+            semesters={semesters}
+            userRole={userRole}
+            adminUsername={adminUsername}
+            setCurrentView={setCurrentView}
+          />
+        );
       case 'dailyMarking':
         return (
           <DailyMarkingView
@@ -549,6 +602,15 @@ const App = () => {
             }}
           />
         );
+      case 'announcements':
+        return (
+          <AnnouncementsView
+            announcements={announcements}
+            setAnnouncements={setAnnouncements}
+            teams={teams}
+            directAccess={directAccess}
+          />
+        );
       default:
         return (
           <DailyMarkingView
@@ -561,25 +623,121 @@ const App = () => {
     }
   };
 
-  const allNavItems = [
-    { id: 'dailyMarking', label: 'Mark Attendance', icon: UserCheck },
-    { id: 'classMembers', label: 'Manage Class Members', icon: Users },
-    { id: 'dailyLog', label: 'Attendance Log', icon: Calendar },
-    { id: 'crtMarking', label: 'Mark CRT Attendance', icon: UserCheck },
-    { id: 'crtLog', label: 'CRT Attendance Log', icon: Calendar },
-    { id: 'backlogs', label: 'Backlogs', icon: BookOpen },
-    { id: 'subjectWise', label: 'Sub-wise Backlog Count', icon: BarChart2 },
-    { id: 'parentDetails', label: 'Parent Details', icon: PhoneCall },
-    { id: 'studentInfo', label: 'Student Info & ABC IDs', icon: Info },
-    { id: 'adminSettings', label: 'Admin Settings', icon: Settings },
+  // ── Grouped nav structure ────────────────────────────────────────────────
+  const navGroups = [
+    {
+      key: 'attendance',
+      label: 'Attendance',
+      icon: UserCheck,
+      items: [
+        { id: 'dailyMarking',  label: 'Mark Attendance',     icon: UserCheck },
+        { id: 'dailyLog',      label: 'Attendance Log',       icon: Calendar  },
+        { id: 'crtMarking',    label: 'Mark CRT Attendance',  icon: UserCheck },
+        { id: 'crtLog',        label: 'CRT Attendance Log',   icon: Calendar  },
+      ],
+    },
+    {
+      key: 'students',
+      label: 'Students',
+      icon: Users,
+      items: [
+        { id: 'classMembers', label: 'Manage Class Members',   icon: Users },
+        { id: 'studentInfo',  label: 'Student Info & ABC IDs', icon: Info  },
+      ],
+    },
+    {
+      key: 'backlogs',
+      label: 'Backlogs',
+      icon: BookOpen,
+      items: [
+        { id: 'backlogs',     label: 'Backlogs',               icon: BookOpen  },
+        { id: 'subjectWise',  label: 'Sub-wise Backlog Count',  icon: BarChart2 },
+      ],
+    },
   ];
 
-  const navItems = allNavItems.filter(item => {
-    if (userRole === 'classAdmin') {
-      return item.id !== 'adminSettings';
-    }
-    return true;
-  });
+  const topLevelItems = [
+    { id: 'announcements',  label: 'Announcements', icon: Megaphone },
+    { id: 'parentDetails',  label: 'Parent Details', icon: PhoneCall },
+    ...(userRole !== 'classAdmin' ? [{ id: 'adminSettings', label: 'Admin Settings', icon: Settings }] : []),
+  ];
+
+  // Dashboard item (always pinned at top)
+  const dashboardItem = { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard };
+
+  // All view IDs that belong to groups
+  const attendanceViewIds = navGroups.find(g => g.key === 'attendance').items.map(i => i.id);
+  const studentsViewIds   = navGroups.find(g => g.key === 'students').items.map(i => i.id);
+  const backlogsViewIds   = navGroups.find(g => g.key === 'backlogs').items.map(i => i.id);
+
+  const toggleGroup = (key) =>
+    setOpenGroups(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // Flat list for mobile nav
+  const allFlatItems = [
+    dashboardItem,
+    ...navGroups.flatMap(g => g.items),
+    ...topLevelItems,
+  ].filter(item => !(userRole === 'classAdmin' && item.id === 'adminSettings'));
+
+  // ── Sidebar group renderer ────────────────────────────────────────────────
+  const renderSidebarGroup = (group) => {
+    const isOpen        = openGroups[group.key];
+    const groupActive   = group.items.some(i => i.id === currentView);
+    const GroupIcon     = group.icon;
+
+    return (
+      <div key={group.key}>
+        {/* Group header */}
+        <button
+          onClick={() => toggleGroup(group.key)}
+          className={`w-full text-left flex items-center justify-between p-3 rounded-xl transition-all duration-200 font-semibold
+            ${groupActive
+              ? 'bg-indigo-50 text-indigo-700'
+              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+            }`}
+        >
+          <div className="flex items-center">
+            <GroupIcon className="w-5 h-5 mr-3" />
+            <span>{group.label}</span>
+          </div>
+          <ChevronDown
+            className={`w-4 h-4 transition-transform duration-300 ${
+              isOpen ? 'rotate-180' : 'rotate-0'
+            }`}
+          />
+        </button>
+
+        {/* Sub-items */}
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            isOpen ? 'max-h-96 opacity-100 mt-1' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <div className="ml-3 pl-3 border-l-2 border-indigo-100 space-y-1 mb-1">
+            {group.items.map(item => {
+              const isActive = currentView === item.id;
+              const ItemIcon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setCurrentView(item.id)}
+                  className={`w-full text-left flex items-center p-2.5 rounded-lg transition-colors duration-200
+                    ${isActive
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-gray-600 hover:bg-indigo-50 hover:text-indigo-600'
+                    }`}
+                >
+                  <ItemIcon className="w-4 h-4 mr-2.5 flex-shrink-0" />
+                  <span className="text-sm font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans antialiased">
@@ -632,7 +790,7 @@ const App = () => {
       {/* Mobile Tabbed Navigation */}
       <nav className="sm:hidden bg-white shadow-inner p-2 border-b border-gray-200 sticky top-16 z-10 print:hidden overflow-x-auto">
         <div className="flex justify-around whitespace-nowrap">
-          {navItems.map((item) => {
+          {allFlatItems.map((item) => {
             const isActive = currentView === item.id;
             return (
               <button
@@ -641,7 +799,7 @@ const App = () => {
                   setCurrentView(item.id);
                   setMobileMenuOpen(false);
                 }}
-                className={`py-2 px-3 flex flex-col items-center text-xs font-medium rounded-lg transition-colors 
+                className={`py-2 px-3 flex flex-col items-center text-xs font-medium rounded-lg transition-colors
                   ${isActive ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-indigo-600'}`}
               >
                 <item.icon className="w-5 h-5 mb-1" />
@@ -656,26 +814,49 @@ const App = () => {
       <main className="w-full px-4 md:px-8 flex">
         {/* Desktop Sidebar Navigation */}
         <nav className="hidden sm:block w-64 bg-white border-r border-gray-200 sticky top-20 h-fit print:hidden">
-          <div className="p-4 space-y-2">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Navigation</p>
-            {navItems.map((item) => {
-              const isActive = currentView === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setCurrentView(item.id)}
-                  className={`w-full text-left flex items-center p-3 rounded-xl transition-colors duration-200 
-                    ${isActive
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                    }`}
-                >
-                  <item.icon className="w-5 h-5 mr-3" />
-                  <span className="font-medium">{item.label}</span>
-                </button>
-              );
-            })}
-            <hr className="my-4" />
+          <div className="p-4 space-y-1">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Navigation</p>
+
+            {/* Dashboard pinned item */}
+            <button
+              onClick={() => setCurrentView('dashboard')}
+              className={`w-full text-left flex items-center p-3 rounded-xl transition-colors duration-200 mb-2
+                ${currentView === 'dashboard'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
+                }`}
+            >
+              <LayoutDashboard className="w-5 h-5 mr-3" />
+              <span className="font-bold">Dashboard</span>
+            </button>
+
+            {/* Collapsible groups */}
+            {navGroups.map(renderSidebarGroup)}
+
+            {/* Divider */}
+            <div className="pt-2">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">More</p>
+              {topLevelItems.map(item => {
+                const isActive = currentView === item.id;
+                const ItemIcon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setCurrentView(item.id)}
+                    className={`w-full text-left flex items-center p-3 rounded-xl transition-colors duration-200
+                      ${isActive
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
+                      }`}
+                  >
+                    <ItemIcon className="w-5 h-5 mr-3" />
+                    <span className="font-medium">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <hr className="my-3" />
             <button
               onClick={handleLogout}
               className="w-full text-left flex items-center p-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors duration-200 font-medium"
@@ -687,11 +868,11 @@ const App = () => {
         </nav>
 
         {/* Content View */}
-        <div className="flex-1 min-h-screen bg-gray-50">
+        <div className="flex-1 min-w-0 min-h-screen bg-gray-50">
           {renderContent()}
         </div>
       </main>
-      
+
       <ChatBot
         students={students}
         attendanceHistory={attendanceHistory}
