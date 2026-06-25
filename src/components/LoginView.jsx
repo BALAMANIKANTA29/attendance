@@ -1,6 +1,25 @@
 import React, { useState } from 'react';
 import { LogIn, Lock, AlertCircle, Shield, User, KeyRound, CheckCircle } from 'lucide-react';
 
+const getApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    const { hostname, protocol } = window.location;
+    if (hostname.includes('vercel.app')) {
+      return 'http://localhost:3001/api';
+    }
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return '/api';
+    }
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+      return `${protocol}//${hostname}:3001/api`;
+    }
+    return '/api';
+  }
+  return 'http://localhost:3001/api';
+};
+
+const API_URL = getApiUrl();
+
 export const LoginView = ({ onLogin, studentInfoData = [] }) => {
   const [credential, setCredential] = useState('');
   const [password, setPassword] = useState('');
@@ -8,7 +27,7 @@ export const LoginView = ({ onLogin, studentInfoData = [] }) => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const id = credential.trim();
     const pass = password.trim();
 
@@ -18,59 +37,32 @@ export const LoginView = ({ onLogin, studentInfoData = [] }) => {
     }
 
     setError('');
+    setIsLoading(true);
 
-    // ── 1. Super Admin ─────────────────────────────────────────────
-    if (id === 'BMK' && pass === 'Bala') {
-      setSuccessMsg('Welcome, Super Admin!');
-      setIsLoading(true);
-      setTimeout(() => { onLogin('admin', id); setIsLoading(false); }, 800);
-      return;
-    }
-
-    // ── 2. Class Admin ─────────────────────────────────────────────
-    if (id.toUpperCase() === 'K12AIDHA' && pass === 'k12AIDHA') {
-      setSuccessMsg('Welcome, Class Admin!');
-      setIsLoading(true);
-      setTimeout(() => { onLogin('classAdmin', id); setIsLoading(false); }, 800);
-      return;
-    }
-
-    // ── 3. Student — Roll Number or Email as both ID and password ──────────
-    const idClean = id.toLowerCase();
-    const passClean = pass.toLowerCase();
-    const studentMatch = studentInfoData.find(
-      s => (s.roll || '').toLowerCase() === idClean || (s.email || '').toLowerCase() === idClean
-    );
-    if (studentMatch) {
-      const matchRoll = (studentMatch.roll || '').toLowerCase();
-      const matchEmail = (studentMatch.email || '').toLowerCase();
-      if (passClean === matchRoll || passClean === matchEmail) {
-        setSuccessMsg(`Welcome, ${studentMatch.name}!`);
-        setIsLoading(true);
-        setTimeout(() => { onLogin('student', studentMatch.roll); setIsLoading(false); }, 800);
-        return;
-      }
-    }
-
-    // ── 4. Parent — Registered mobile as both ID and password ─────
-    const cleanId = id.replace(/[\s-]/g, '');
-    const cleanPass = pass.replace(/[\s-]/g, '');
-    if (cleanId === cleanPass && cleanId.length >= 10) {
-      const parentMatch = studentInfoData.find(s => {
-        const p1 = (s.p1 || '').replace(/[\s-]/g, '');
-        const p2 = (s.p2 || '').replace(/[\s-]/g, '');
-        return (p1 && p1 === cleanId) || (p2 && p2 === cleanId);
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: id, password: pass })
       });
-      if (parentMatch) {
-        setSuccessMsg(`Welcome! Viewing details for ${parentMatch.name}.`);
-        setIsLoading(true);
-        setTimeout(() => { onLogin('parent', parentMatch.roll); setIsLoading(false); }, 800);
-        return;
-      }
-    }
 
-    // ── No match ───────────────────────────────────────────────────
-    setError('Invalid credentials. Please check your ID and password and try again.');
+      if (res.ok) {
+        const data = await res.json();
+        setSuccessMsg(`Welcome, ${data.name}!`);
+        setTimeout(() => {
+          onLogin(data.role, data.roll || data.name, data.email);
+          setIsLoading(false);
+        }, 800);
+      } else {
+        const err = await res.json();
+        setError(err.error || 'Invalid credentials. Please try again.');
+        setIsLoading(false);
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Network connection failed. Please verify the server is running.');
+      setIsLoading(false);
+    }
   };
 
   const handleKeyDown = (e) => {

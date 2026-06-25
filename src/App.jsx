@@ -25,6 +25,7 @@ import { crtStudentData as defaultCrtStudentData } from './data/crtStudentData';
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState('admin'); // 'admin', 'classAdmin', 'student', or 'parent'
+  const [userEmail, setUserEmail] = useState(null);
   const [adminUsername, setAdminUsername] = useState('');
   const [currentStudentRoll, setCurrentStudentRoll] = useState(null);
   const [previewStudentRoll, setPreviewStudentRoll] = useState(null);
@@ -40,12 +41,12 @@ const App = () => {
     id: s.roll,
     name: s.name,
     status: null
-  })));
+  })), userEmail);
 
 
 
-  const [attendanceHistory, setAttendanceHistory] = useLocalStorage('attendanceHistory', {});
-  const [lastSubmittedReport, setLastSubmittedReport] = useLocalStorage('lastSubmittedReport', null);
+  const [attendanceHistory, setAttendanceHistory] = useLocalStorage('attendanceHistory', {}, userEmail);
+  const [lastSubmittedReport, setLastSubmittedReport] = useLocalStorage('lastSubmittedReport', null, userEmail);
   const [announcements, setAnnouncements] = useLocalStorage('announcements', [
     {
       id: 'default-1',
@@ -55,9 +56,9 @@ const App = () => {
       target: 'everyone',
       date: new Date().toISOString()
     }
-  ]);
+  ], userEmail);
 
-  const [crtStudents, setCrtStudents] = useLocalStorage('crtStudents', defaultCrtStudentData);
+  const [crtStudents, setCrtStudents] = useLocalStorage('crtStudents', defaultCrtStudentData, userEmail);
 
   React.useEffect(() => {
     const targetRoll = '23B21A45B4';
@@ -93,23 +94,23 @@ const App = () => {
     }));
   }, [currentView]);
 
-  const [crtAttendanceHistory, setCrtAttendanceHistory] = useLocalStorage('crtAttendanceHistory', {});
-  const [crtLastSubmittedReport, setCrtLastSubmittedReport] = useLocalStorage('crtLastSubmittedReport', null);
+  const [crtAttendanceHistory, setCrtAttendanceHistory] = useLocalStorage('crtAttendanceHistory', {}, userEmail);
+  const [crtLastSubmittedReport, setCrtLastSubmittedReport] = useLocalStorage('crtLastSubmittedReport', null, userEmail);
 
   const [classInfo, setClassInfo] = useLocalStorage('classInfo', {
     name: 'K12AIDHA',
     semester: 'Fall',
     academicYear: ''
-  });
+  }, userEmail);
 
   const [attendancePolicy, setAttendancePolicy] = useLocalStorage('attendancePolicy', {
     minimumAttendance: 75,
     warningThreshold: 60,
     semesterStartMonth: 1,
     semesterEndMonth: 6
-  });
+  }, userEmail);
 
-  const [studentInfoDataState, setStudentInfoDataState] = useLocalStorage('studentInfoData', defaultStudentInfoData);
+  const [studentInfoDataState, setStudentInfoDataState] = useLocalStorage('studentInfoData', defaultStudentInfoData, userEmail);
 
   // Migration: merge ALL missing/empty fields from defaultStudentInfoData into cached localStorage records.
   // Also converts legacy `backlogSubs` field into per-semester `s31` field for dashboard display.
@@ -183,7 +184,11 @@ const App = () => {
 
   const fetchCourses = async () => {
     try {
-      const res = await fetch(`${API_URL}/courses`);
+      const headers = {};
+      if (userEmail) {
+        headers['x-user-email'] = userEmail;
+      }
+      const res = await fetch(`${API_URL}/courses`, { headers });
       if (res.ok) {
         const data = await res.json();
         setCourses(data);
@@ -195,7 +200,7 @@ const App = () => {
 
   React.useEffect(() => {
     fetchCourses();
-  }, []);
+  }, [userEmail]);
 
   const students = studentsState;
   const studentInfoData = studentInfoDataState;
@@ -248,7 +253,7 @@ const App = () => {
     });
   };
 
-  const [parentDataOverrides, setParentDataOverrides] = useLocalStorage('parentDataOverrides', {});
+  const [parentDataOverrides, setParentDataOverrides] = useLocalStorage('parentDataOverrides', {}, userEmail);
   // parentDataOverrides is a map of hno -> updated record; merged in ParentDetailsView via the setParentData approach
 
   const [semesters, setSemesters] = useLocalStorage('semesters', [
@@ -257,9 +262,9 @@ const App = () => {
     { key: 's21', label: '2-1' },
     { key: 's22', label: '2-2' },
     { key: 's31', label: '3-1' },
-  ]);
+  ], userEmail);
 
-  const [directAccess, setDirectAccess] = useLocalStorage('directAccess', true);
+  const [directAccess, setDirectAccess] = useLocalStorage('directAccess', true, userEmail);
 
   const clearAttendanceHistory = () => {
     setAttendanceHistory({});
@@ -292,9 +297,10 @@ const App = () => {
     });
   };
 
-  const handleLogin = (role, rollOrUsername = null) => {
+  const handleLogin = (role, rollOrUsername = null, email = null) => {
     setUserRole(role || 'admin');
     setIsAuthenticated(true);
+    setUserEmail(email);
     if (role === 'student' || role === 'parent') {
       setCurrentStudentRoll(rollOrUsername);
       setCurrentView(role === 'student' ? 'studentDashboard' : 'parentDashboard');
@@ -314,6 +320,7 @@ const App = () => {
     setAdminUsername('');
     setCurrentView('dailyMarking');
     setMobileMenuOpen(false);
+    setUserEmail(null);
   };
 
   const handleSubmissionSuccess = (reportData) => {
@@ -580,6 +587,7 @@ const App = () => {
             semesters={semesters}
             setSemesters={setSemesters}
             onNavigateToClassMembers={() => setCurrentView('classMembers')}
+            userEmail={userEmail}
           />
         );
       case 'parentDetails':

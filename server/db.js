@@ -10,7 +10,8 @@ const db = new Database(path.join(__dirname, 'attendance.db'));
 // Initialize tables
 db.exec(`
   CREATE TABLE IF NOT EXISTS students (
-    roll TEXT PRIMARY KEY,
+    owner_email TEXT,
+    roll TEXT,
     name TEXT,
     team TEXT,
     cls TEXT,
@@ -31,35 +32,44 @@ db.exec(`
     s12 TEXT,
     s21 TEXT,
     s22 TEXT,
-    s31 TEXT
+    s31 TEXT,
+    PRIMARY KEY (owner_email, roll)
   );
 
   CREATE TABLE IF NOT EXISTS attendance_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_email TEXT,
     date TEXT,
     report_data TEXT -- JSON string
   );
 
   CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT -- JSON string
+    owner_email TEXT,
+    key TEXT,
+    value TEXT, -- JSON string
+    PRIMARY KEY (owner_email, key)
   );
 
   CREATE TABLE IF NOT EXISTS courses (
-    code TEXT PRIMARY KEY,
-    name TEXT
+    owner_email TEXT,
+    code TEXT,
+    name TEXT,
+    PRIMARY KEY (owner_email, code)
   );
 
   CREATE TABLE IF NOT EXISTS semesters (
-    key TEXT PRIMARY KEY,
-    label TEXT
+    owner_email TEXT,
+    key TEXT,
+    label TEXT,
+    PRIMARY KEY (owner_email, key)
   );
 
   CREATE TABLE IF NOT EXISTS student_backlogs (
+    owner_email TEXT,
     roll TEXT,
     course_code TEXT,
     semester_key TEXT,
-    PRIMARY KEY (roll, course_code, semester_key)
+    PRIMARY KEY (owner_email, roll, course_code, semester_key)
   );
 
 `);

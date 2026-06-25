@@ -15,7 +15,8 @@ export const AdminSettingsView = ({
   onRefreshCourses,
   semesters = [],
   setSemesters,
-  onNavigateToClassMembers
+  onNavigateToClassMembers,
+  userEmail
 }) => {
   const [activeTab, setActiveTab] = useState('students');
   const [isEditingClass, setIsEditingClass] = useState(false);
@@ -32,7 +33,10 @@ export const AdminSettingsView = ({
     try {
       const res = await fetch('/api/courses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-email': userEmail
+        },
         body: JSON.stringify(newCourse)
       });
       if (res.ok) {
@@ -49,7 +53,10 @@ export const AdminSettingsView = ({
     if (!window.confirm(`Are you sure you want to delete course ${code}? This will remove it from all student backlog lists!`)) return;
     try {
       const res = await fetch(`/api/courses/${code}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'x-user-email': userEmail
+        }
       });
       if (res.ok) {
         if (onRefreshCourses) onRefreshCourses();
@@ -66,7 +73,10 @@ export const AdminSettingsView = ({
     try {
       const res = await fetch('/api/semesters', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-email': userEmail
+        },
         body: JSON.stringify(newSemester)
       });
       if (res.ok) {
@@ -85,7 +95,10 @@ export const AdminSettingsView = ({
     if (!window.confirm(`Are you sure you want to delete semester ${key}? This will clear all backlog entries for this semester!`)) return;
     try {
       const res = await fetch(`/api/semesters/${key}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'x-user-email': userEmail
+        }
       });
       if (res.ok) {
         // Sync semesters state

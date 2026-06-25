@@ -11,9 +11,9 @@ app.use(cors());
 app.use(express.json({ strict: false }));
 
 // Helper to dynamically attach student backlogs from student_backlogs table
-const getBacklogsGroupedByStudent = (studentsList) => {
-  const backlogs = db.prepare('SELECT * FROM student_backlogs').all();
-  let sems = db.prepare('SELECT * FROM semesters').all();
+const getBacklogsGroupedByStudent = (studentsList, ownerEmail) => {
+  const backlogs = db.prepare('SELECT * FROM student_backlogs WHERE owner_email = ?').all(ownerEmail);
+  let sems = db.prepare('SELECT * FROM semesters WHERE owner_email = ?').all(ownerEmail);
   if (sems.length === 0) {
     sems = [
       { key: 's11', label: '1-1' },
@@ -55,12 +55,91 @@ const getBacklogsGroupedByStudent = (studentsList) => {
   });
 };
 
+const getContextInfo = (req) => {
+  const userEmail = req.headers['x-user-email'] || '';
+  
+  // Check if userEmail belongs to a student
+  const student = db.prepare('SELECT owner_email, roll, name, team FROM students WHERE LOWER(email) = LOWER(?) LIMIT 1').get(userEmail);
+  
+  if (student) {
+    return {
+      isStudent: true,
+      userEmail: userEmail,
+      ownerEmail: student.owner_email,
+      studentRoll: student.roll,
+      studentName: student.name,
+      studentTeam: student.team
+    };
+  }
+  
+  // Otherwise, treat them as the owner admin
+  return {
+    isStudent: false,
+    userEmail: userEmail,
+    ownerEmail: userEmail,
+    studentRoll: null,
+    studentName: null,
+    studentTeam: null
+  };
+};
+
+// --- Authentication ---
+app.post('/api/auth/login', (req, res) => {
+  const { credential, password } = req.body;
+  if (!credential || !password) {
+    return res.status(400).json({ error: 'Credential and password are required' });
+  }
+
+  const id = credential.trim();
+  const pass = password.trim();
+
+  // 1. Super Admin
+  if (id === 'BMK' && pass === 'Bala') {
+    return res.json({ success: true, role: 'admin', email: 'bmk@example.com', name: 'Super Admin' });
+  }
+
+  // 2. Class Admin
+  if (id.toUpperCase() === 'K12AIDHA' && pass === 'k12AIDHA') {
+    return res.json({ success: true, role: 'classAdmin', email: 'k12aidha@example.com', name: 'Class Admin' });
+  }
+
+  // 3. Student
+  const idClean = id.toLowerCase();
+  const passClean = pass.toLowerCase();
+  const student = db.prepare('SELECT * FROM students WHERE LOWER(roll) = ? OR LOWER(email) = ? LIMIT 1').get(idClean, idClean);
+  if (student) {
+    const matchRoll = (student.roll || '').toLowerCase();
+    const matchEmail = (student.email || '').toLowerCase();
+    if (passClean === matchRoll || passClean === matchEmail) {
+      return res.json({ success: true, role: 'student', email: student.email, roll: student.roll, name: student.name });
+    }
+  }
+
+  // 4. Parent
+  const cleanId = id.replace(/[\s-]/g, '');
+  const cleanPass = pass.replace(/[\s-]/g, '');
+  if (cleanId === cleanPass && cleanId.length >= 10) {
+    const parentMatch = db.prepare("SELECT * FROM students WHERE REPLACE(REPLACE(p1, ' ', ''), '-', '') = ? OR REPLACE(REPLACE(p2, ' ', ''), '-', '') = ? LIMIT 1").get(cleanId, cleanId);
+    if (parentMatch) {
+      return res.json({ success: true, role: 'parent', email: parentMatch.email, roll: parentMatch.roll, name: parentMatch.name });
+    }
+  }
+
+  return res.status(401).json({ error: 'Invalid credentials. Please check your ID and password.' });
+});
+
 // --- Students ---
 
 app.get('/api/students', (req, res) => {
   try {
-    const students = db.prepare('SELECT * FROM students').all();
-    const mapped = getBacklogsGroupedByStudent(students);
+    const context = getContextInfo(req);
+    let students;
+    if (context.isStudent) {
+      students = db.prepare('SELECT * FROM students WHERE owner_email = ? AND LOWER(email) = LOWER(?)').all(context.ownerEmail, context.userEmail);
+    } else {
+      students = db.prepare('SELECT * FROM students WHERE owner_email = ?').all(context.ownerEmail);
+    }
+    const mapped = getBacklogsGroupedByStudent(students, context.ownerEmail);
     res.json(mapped);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -70,26 +149,31 @@ app.get('/api/students', (req, res) => {
 app.put('/api/students/:roll', (req, res) => {
   const { roll } = req.params;
   const data = { ...req.body };
+  const context = getContextInfo(req);
+
+  if (context.isStudent && roll.toLowerCase() !== context.studentRoll.toLowerCase()) {
+    return res.status(403).json({ error: 'Forbidden: Cannot update other student records.' });
+  }
   
-  let sems = db.prepare('SELECT key FROM semesters').all().map(s => s.key);
+  let sems = db.prepare('SELECT key FROM semesters WHERE owner_email = ?').all(context.ownerEmail).map(s => s.key);
   if (sems.length === 0) {
     sems = ['s11', 's12', 's21', 's22', 's31'];
   }
   
   try {
     db.transaction(() => {
-      db.prepare('DELETE FROM student_backlogs WHERE roll = ?').run(roll);
+      db.prepare('DELETE FROM student_backlogs WHERE owner_email = ? AND roll = ?').run(context.ownerEmail, roll);
       
       const allSubs = [];
-      const insertBacklog = db.prepare('INSERT OR REPLACE INTO student_backlogs (roll, course_code, semester_key) VALUES (?, ?, ?)');
+      const insertBacklog = db.prepare('INSERT OR REPLACE INTO student_backlogs (owner_email, roll, course_code, semester_key) VALUES (?, ?, ?, ?)');
       
       for (const semKey of sems) {
         if (data[semKey] !== undefined) {
           const val = String(data[semKey] || '').trim();
           const subs = val.split(',').map(x => x.trim().toUpperCase()).filter(Boolean);
           for (const sub of subs) {
-            db.prepare('INSERT OR IGNORE INTO courses (code, name) VALUES (?, ?)').run(sub, sub);
-            insertBacklog.run(roll, sub, semKey);
+            db.prepare('INSERT OR IGNORE INTO courses (owner_email, code, name) VALUES (?, ?, ?)').run(context.ownerEmail, sub, sub);
+            insertBacklog.run(context.ownerEmail, roll, sub, semKey);
             allSubs.push(sub);
           }
         }
@@ -115,8 +199,8 @@ app.put('/api/students/:roll', (req, res) => {
       
       if (columns.length > 0) {
         const setClause = columns.map(col => `${col} = ?`).join(', ');
-        const query = `UPDATE students SET ${setClause} WHERE roll = ?`;
-        db.prepare(query).run(...values, roll);
+        const query = `UPDATE students SET ${setClause} WHERE owner_email = ? AND roll = ?`;
+        db.prepare(query).run(...values, context.ownerEmail, roll);
       }
     })();
     
@@ -128,11 +212,17 @@ app.put('/api/students/:roll', (req, res) => {
 
 app.post('/api/students/bulk', (req, res) => {
   const students = req.body;
+  const context = getContextInfo(req);
+
+  if (context.isStudent) {
+    return res.status(403).json({ error: 'Forbidden: Students cannot perform bulk updates.' });
+  }
+
   if (!Array.isArray(students)) {
     return res.status(400).json({ error: 'Payload must be an array' });
   }
 
-  let sems = db.prepare('SELECT key FROM semesters').all().map(s => s.key);
+  let sems = db.prepare('SELECT key FROM semesters WHERE owner_email = ?').all(context.ownerEmail).map(s => s.key);
   if (sems.length === 0) {
     sems = ['s11', 's12', 's21', 's22', 's31'];
   }
@@ -141,18 +231,18 @@ app.post('/api/students/bulk', (req, res) => {
     db.transaction(() => {
       const insertStudent = db.prepare(`
         INSERT OR REPLACE INTO students (
-          roll, name, team, cls, room, phone, parentName, p1, p2, email, 
+          owner_email, roll, name, team, cls, room, phone, parentName, p1, p2, email, 
           backlogs, backlogSubs, laptop, club, abcId, project, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
-      const insertBacklog = db.prepare('INSERT OR REPLACE INTO student_backlogs (roll, course_code, semester_key) VALUES (?, ?, ?)');
+      const insertBacklog = db.prepare('INSERT OR REPLACE INTO student_backlogs (owner_email, roll, course_code, semester_key) VALUES (?, ?, ?, ?)');
 
       for (const s of students) {
         const roll = s.roll || s.id;
         if (!roll) continue;
 
-        db.prepare('DELETE FROM student_backlogs WHERE roll = ?').run(roll);
+        db.prepare('DELETE FROM student_backlogs WHERE owner_email = ? AND roll = ?').run(context.ownerEmail, roll);
 
         const allSubs = [];
         for (const semKey of sems) {
@@ -160,14 +250,15 @@ app.post('/api/students/bulk', (req, res) => {
             const val = String(s[semKey] || '').trim();
             const subs = val.split(',').map(x => x.trim().toUpperCase()).filter(Boolean);
             for (const sub of subs) {
-              db.prepare('INSERT OR IGNORE INTO courses (code, name) VALUES (?, ?)').run(sub, sub);
-              insertBacklog.run(roll, sub, semKey);
+              db.prepare('INSERT OR IGNORE INTO courses (owner_email, code, name) VALUES (?, ?, ?)').run(context.ownerEmail, sub, sub);
+              insertBacklog.run(context.ownerEmail, roll, sub, semKey);
               allSubs.push(sub);
             }
           }
         }
 
         insertStudent.run(
+          context.ownerEmail,
           roll,
           s.name || null,
           s.team || null,
@@ -197,7 +288,8 @@ app.post('/api/students/bulk', (req, res) => {
 // --- Courses Catalog ---
 app.get('/api/courses', (req, res) => {
   try {
-    const rows = db.prepare('SELECT * FROM courses ORDER BY code ASC').all();
+    const context = getContextInfo(req);
+    const rows = db.prepare('SELECT * FROM courses WHERE owner_email = ? ORDER BY code ASC').all(context.ownerEmail);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -206,10 +298,15 @@ app.get('/api/courses', (req, res) => {
 
 app.post('/api/courses', (req, res) => {
   const { code, name } = req.body;
+  const context = getContextInfo(req);
+
+  if (context.isStudent) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   if (!code) return res.status(400).json({ error: 'Course code is required' });
   try {
-    db.prepare('INSERT OR REPLACE INTO courses (code, name) VALUES (?, ?)')
-      .run(code.trim().toUpperCase(), (name || code).trim());
+    db.prepare('INSERT OR REPLACE INTO courses (owner_email, code, name) VALUES (?, ?, ?)')
+      .run(context.ownerEmail, code.trim().toUpperCase(), (name || code).trim());
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -218,10 +315,15 @@ app.post('/api/courses', (req, res) => {
 
 app.delete('/api/courses/:code', (req, res) => {
   const { code } = req.params;
+  const context = getContextInfo(req);
+
+  if (context.isStudent) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     db.transaction(() => {
-      db.prepare('DELETE FROM courses WHERE code = ?').run(code.toUpperCase());
-      db.prepare('DELETE FROM student_backlogs WHERE course_code = ?').run(code.toUpperCase());
+      db.prepare('DELETE FROM courses WHERE owner_email = ? AND code = ?').run(context.ownerEmail, code.toUpperCase());
+      db.prepare('DELETE FROM student_backlogs WHERE owner_email = ? AND course_code = ?').run(context.ownerEmail, code.toUpperCase());
     })();
     res.json({ success: true });
   } catch (error) {
@@ -232,7 +334,8 @@ app.delete('/api/courses/:code', (req, res) => {
 // --- Semesters ---
 app.get('/api/semesters', (req, res) => {
   try {
-    const rows = db.prepare('SELECT * FROM semesters ORDER BY key ASC').all();
+    const context = getContextInfo(req);
+    const rows = db.prepare('SELECT * FROM semesters WHERE owner_email = ? ORDER BY key ASC').all(context.ownerEmail);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -241,10 +344,15 @@ app.get('/api/semesters', (req, res) => {
 
 app.post('/api/semesters', (req, res) => {
   const { key, label } = req.body;
+  const context = getContextInfo(req);
+
+  if (context.isStudent) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   if (!key || !label) return res.status(400).json({ error: 'Semester key and label are required' });
   try {
-    db.prepare('INSERT OR REPLACE INTO semesters (key, label) VALUES (?, ?)')
-      .run(key.trim().toLowerCase(), label.trim());
+    db.prepare('INSERT OR REPLACE INTO semesters (owner_email, key, label) VALUES (?, ?, ?)')
+      .run(context.ownerEmail, key.trim().toLowerCase(), label.trim());
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -253,10 +361,15 @@ app.post('/api/semesters', (req, res) => {
 
 app.delete('/api/semesters/:key', (req, res) => {
   const { key } = req.params;
+  const context = getContextInfo(req);
+
+  if (context.isStudent) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   try {
     db.transaction(() => {
-      db.prepare('DELETE FROM semesters WHERE key = ?').run(key.toLowerCase());
-      db.prepare('DELETE FROM student_backlogs WHERE semester_key = ?').run(key.toLowerCase());
+      db.prepare('DELETE FROM semesters WHERE owner_email = ? AND key = ?').run(context.ownerEmail, key.toLowerCase());
+      db.prepare('DELETE FROM student_backlogs WHERE owner_email = ? AND semester_key = ?').run(context.ownerEmail, key.toLowerCase());
     })();
     res.json({ success: true });
   } catch (error) {
@@ -267,25 +380,56 @@ app.delete('/api/semesters/:key', (req, res) => {
 // --- Attendance History ---
 
 app.get('/api/attendance', (req, res) => {
-  const history = db.prepare('SELECT * FROM attendance_history').all();
-  // Parse JSON report_data
-  const parsed = history.reduce((acc, row) => {
-    const report = JSON.parse(row.report_data);
-    const date = row.date;
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(report);
-    return acc;
-  }, {});
-  res.json(parsed);
+  try {
+    const context = getContextInfo(req);
+    const history = db.prepare('SELECT * FROM attendance_history WHERE owner_email = ?').all(context.ownerEmail);
+    
+    // Parse JSON report_data
+    let parsed = history.reduce((acc, row) => {
+      const report = JSON.parse(row.report_data);
+      const date = row.date;
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(report);
+      return acc;
+    }, {});
+
+    if (context.isStudent) {
+      const filtered = {};
+      for (const date of Object.keys(parsed)) {
+        const reports = parsed[date] || [];
+        filtered[date] = reports.map(report => {
+          const filteredRecords = (report.records || []).filter(r => r.id.toLowerCase() === context.studentRoll.toLowerCase());
+          const filteredAbsentees = (report.absentees || []).filter(r => r.toLowerCase() === context.studentRoll.toLowerCase());
+          return {
+            ...report,
+            records: filteredRecords,
+            absentees: filteredAbsentees,
+            presentCount: filteredRecords.filter(r => r.status === 'Present').length,
+            absentCount: filteredRecords.filter(r => r.status === 'Absent').length
+          };
+        });
+      }
+      parsed = filtered;
+    }
+
+    res.json(parsed);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/attendance', (req, res) => {
   const reportData = req.body;
   const date = reportData.date;
+  const context = getContextInfo(req);
+
+  if (context.isStudent) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   
   try {
-    db.prepare('INSERT INTO attendance_history (date, report_data) VALUES (?, ?)')
-      .run(date, JSON.stringify(reportData));
+    db.prepare('INSERT INTO attendance_history (owner_email, date, report_data) VALUES (?, ?, ?)')
+      .run(context.ownerEmail, date, JSON.stringify(reportData));
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -293,23 +437,34 @@ app.post('/api/attendance', (req, res) => {
 });
 
 app.delete('/api/attendance', (req, res) => {
-    try {
-        db.prepare('DELETE FROM attendance_history').run();
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+  const context = getContextInfo(req);
+
+  if (context.isStudent) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  try {
+    db.prepare('DELETE FROM attendance_history WHERE owner_email = ?').run(context.ownerEmail);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // --- Settings ---
 
 app.get('/api/settings/:key', (req, res) => {
   const { key } = req.params;
+  const context = getContextInfo(req);
 
   if (key === 'students') {
     try {
-      const rows = db.prepare('SELECT * FROM students').all();
-      const enriched = getBacklogsGroupedByStudent(rows);
+      let rows;
+      if (context.isStudent) {
+        rows = db.prepare('SELECT * FROM students WHERE owner_email = ? AND LOWER(email) = LOWER(?)').all(context.ownerEmail, context.userEmail);
+      } else {
+        rows = db.prepare('SELECT * FROM students WHERE owner_email = ?').all(context.ownerEmail);
+      }
+      const enriched = getBacklogsGroupedByStudent(rows, context.ownerEmail);
       const mapped = enriched.map(s => ({
         ...s,
         id: s.roll
@@ -322,20 +477,115 @@ app.get('/api/settings/:key', (req, res) => {
 
   if (key === 'studentInfoData') {
     try {
-      const rows = db.prepare('SELECT * FROM students').all();
-      const enriched = getBacklogsGroupedByStudent(rows);
+      let rows;
+      if (context.isStudent) {
+        rows = db.prepare('SELECT * FROM students WHERE owner_email = ? AND LOWER(email) = LOWER(?)').all(context.ownerEmail, context.userEmail);
+      } else {
+        rows = db.prepare('SELECT * FROM students WHERE owner_email = ?').all(context.ownerEmail);
+      }
+      const enriched = getBacklogsGroupedByStudent(rows, context.ownerEmail);
       return res.json(enriched);
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
   }
 
-  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
-  res.json(row ? JSON.parse(row.value) : null);
+  const row = db.prepare('SELECT value FROM settings WHERE owner_email = ? AND key = ?').get(context.ownerEmail, key);
+  let data = row ? JSON.parse(row.value) : null;
+
+  if (context.isStudent && data) {
+    if (key === 'attendanceHistory' || key === 'crtAttendanceHistory') {
+      const filtered = {};
+      for (const date of Object.keys(data)) {
+        const reports = data[date] || [];
+        filtered[date] = reports.map(report => {
+          const filteredRecords = (report.records || []).filter(r => r.id.toLowerCase() === context.studentRoll.toLowerCase());
+          const filteredAbsentees = (report.absentees || []).filter(r => r.toLowerCase() === context.studentRoll.toLowerCase());
+          return {
+            ...report,
+            records: filteredRecords,
+            absentees: filteredAbsentees,
+            presentCount: filteredRecords.filter(r => r.status === 'Present').length,
+            absentCount: filteredRecords.filter(r => r.status === 'Absent').length
+          };
+        });
+      }
+      data = filtered;
+    } else if (key === 'announcements') {
+      data = (data || []).filter(ann => 
+        ann.target === 'everyone' || 
+        ann.target === 'students' || 
+        ann.target === 'parents' ||
+        (ann.target === 'team' && (ann.targetTeam || '').toLowerCase() === (context.studentTeam || '').toLowerCase())
+      );
+    }
+  }
+
+  res.json(data);
 });
 
 app.post('/api/settings/:key', (req, res) => {
   const { key } = req.params;
+  const context = getContextInfo(req);
+
+  if (context.isStudent) {
+    if (key === 'students' || key === 'studentInfoData') {
+      const list = req.body;
+      if (!Array.isArray(list)) {
+        return res.status(400).json({ error: 'Payload must be an array' });
+      }
+      const invalid = list.some(s => (s.roll || s.id || '').toLowerCase() !== context.studentRoll.toLowerCase());
+      if (invalid) {
+        return res.status(403).json({ error: 'Forbidden: You can only update your own student record.' });
+      }
+
+      try {
+        db.transaction(() => {
+          const s = list[0];
+          let sems = db.prepare('SELECT key FROM semesters WHERE owner_email = ?').all(context.ownerEmail).map(sem => sem.key);
+          if (sems.length === 0) sems = ['s11', 's12', 's21', 's22', 's31'];
+
+          db.prepare('DELETE FROM student_backlogs WHERE owner_email = ? AND roll = ?').run(context.ownerEmail, context.studentRoll);
+
+          const insertBacklog = db.prepare('INSERT OR REPLACE INTO student_backlogs (owner_email, roll, course_code, semester_key) VALUES (?, ?, ?, ?)');
+
+          const allSubs = [];
+          for (const semKey of sems) {
+            if (s[semKey] !== undefined) {
+              const val = String(s[semKey] || '').trim();
+              const subs = val.split(',').map(x => x.trim().toUpperCase()).filter(Boolean);
+              for (const sub of subs) {
+                db.prepare('INSERT OR IGNORE INTO courses (owner_email, code, name) VALUES (?, ?, ?)').run(context.ownerEmail, sub, sub);
+                insertBacklog.run(context.ownerEmail, context.studentRoll, sub, semKey);
+                allSubs.push(sub);
+              }
+            }
+          }
+
+          const updatedFields = {
+            abcId: s.abcId, project: s.project, laptop: s.laptop, club: s.club,
+            email: s.email, phone: s.phone, parentName: s.parentName, p1: s.p1, p2: s.p2,
+            village: s.village, mandal: s.mandal, district: s.district, state: s.state, pincode: s.pincode,
+            backlogs: allSubs.length, backlogSubs: allSubs.join(',')
+          };
+
+          const columns = Object.keys(updatedFields).filter(c => s[c] !== undefined);
+          const values = columns.map(c => updatedFields[c]);
+
+          if (columns.length > 0) {
+            const setClause = columns.map(c => `${c} = ?`).join(', ');
+            const query = `UPDATE students SET ${setClause} WHERE owner_email = ? AND roll = ?`;
+            db.prepare(query).run(...values, context.ownerEmail, context.studentRoll);
+          }
+        })();
+        return res.json({ success: true });
+      } catch (error) {
+        return res.status(500).json({ error: error.message });
+      }
+    } else {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+  }
   
   if (key === 'students' || key === 'studentInfoData') {
     const list = req.body;
@@ -343,7 +593,7 @@ app.post('/api/settings/:key', (req, res) => {
       return res.status(400).json({ error: 'Payload must be an array' });
     }
 
-    let sems = db.prepare('SELECT key FROM semesters').all().map(s => s.key);
+    let sems = db.prepare('SELECT key FROM semesters WHERE owner_email = ?').all(context.ownerEmail).map(s => s.key);
     if (sems.length === 0) {
       sems = ['s11', 's12', 's21', 's22', 's31'];
     }
@@ -354,21 +604,21 @@ app.post('/api/settings/:key', (req, res) => {
       db.transaction(() => {
         if (rollsInPayload.length > 0) {
           const placeholders = rollsInPayload.map(() => '?').join(',');
-          db.prepare(`DELETE FROM students WHERE roll NOT IN (${placeholders})`).run(...rollsInPayload);
-          db.prepare(`DELETE FROM student_backlogs WHERE roll NOT IN (${placeholders})`).run(...rollsInPayload);
+          db.prepare(`DELETE FROM students WHERE owner_email = ? AND roll NOT IN (${placeholders})`).run(context.ownerEmail, ...rollsInPayload);
+          db.prepare(`DELETE FROM student_backlogs WHERE owner_email = ? AND roll NOT IN (${placeholders})`).run(context.ownerEmail, ...rollsInPayload);
         } else {
-          db.prepare(`DELETE FROM students`).run();
-          db.prepare(`DELETE FROM student_backlogs`).run();
+          db.prepare(`DELETE FROM students WHERE owner_email = ?`).run(context.ownerEmail);
+          db.prepare(`DELETE FROM student_backlogs WHERE owner_email = ?`).run(context.ownerEmail);
         }
 
         const insertStudent = db.prepare(`
           INSERT OR REPLACE INTO students (
-            roll, name, team, cls, room, phone, parentName, p1, p2, email, 
+            owner_email, roll, name, team, cls, room, phone, parentName, p1, p2, email, 
             backlogs, backlogSubs, laptop, club, abcId, project, status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
-        const insertBacklog = db.prepare('INSERT OR REPLACE INTO student_backlogs (roll, course_code, semester_key) VALUES (?, ?, ?)');
+        const insertBacklog = db.prepare('INSERT OR REPLACE INTO student_backlogs (owner_email, roll, course_code, semester_key) VALUES (?, ?, ?, ?)');
 
         for (const s of list) {
           const roll = s.roll || s.id;
@@ -380,14 +630,15 @@ app.post('/api/settings/:key', (req, res) => {
               const val = String(s[semKey] || '').trim();
               const subs = val.split(',').map(x => x.trim().toUpperCase()).filter(Boolean);
               for (const sub of subs) {
-                db.prepare('INSERT OR IGNORE INTO courses (code, name) VALUES (?, ?)').run(sub, sub);
-                insertBacklog.run(roll, sub, semKey);
+                db.prepare('INSERT OR IGNORE INTO courses (owner_email, code, name) VALUES (?, ?, ?)').run(context.ownerEmail, sub, sub);
+                insertBacklog.run(context.ownerEmail, roll, sub, semKey);
                 allSubs.push(sub);
               }
             }
           }
 
           insertStudent.run(
+            context.ownerEmail,
             roll,
             s.name || null,
             s.team || null,
@@ -418,8 +669,8 @@ app.post('/api/settings/:key', (req, res) => {
   const value = JSON.stringify(req.body);
   
   try {
-    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)')
-      .run(key, value);
+    db.prepare('INSERT OR REPLACE INTO settings (owner_email, key, value) VALUES (?, ?, ?)')
+      .run(context.ownerEmail, key, value);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
