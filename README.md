@@ -62,10 +62,9 @@ A comprehensive, responsive web application for managing student attendance reco
 
 ## ⚙️ Setup & Installation
 
-### 1. Clone the repository
+### 1. Navigate to the project directory
 ```bash
-git clone https://github.com/BALAMANIKANTA29/Class-Attendance-And-Student-Management-System.git
-cd Class-Attendance-And-Student-Management-System
+cd smart
 ```
 
 ### 2. Install dependencies
@@ -77,6 +76,7 @@ npm install
 cd server && npm install
 cd ..
 ```
+
 
 ### 3. Run development server
 ```bash

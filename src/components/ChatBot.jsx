@@ -14,7 +14,12 @@ export const ChatBot = ({
   attendancePolicy = {},
   studentInfoData = [],
   currentView,
-  setCurrentView
+  setCurrentView,
+  semesters = [],
+  courses = [],
+  setStudents,
+  setStudentInfoData,
+  updateStudentInBothStates
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -273,10 +278,365 @@ export const ChatBot = ({
     }
   };
 
+  // TSV/CSV Detector
+  const detectStudentData = (text) => {
+    if (!text) return false;
+    const lines = text.split('\n');
+    let count = 0;
+    const rollRegex = /\b\d{2}[a-z\d]{8}\b|\b\d{3}q[a-z\d]{6}\b/i;
+    for (const line of lines) {
+      if (rollRegex.test(line) && (line.includes('\t') || line.split(/\s{2,}/).length >= 2)) {
+        count++;
+      }
+    }
+    return count >= 2;
+  };
+
+  // TSV/CSV Parser
+  const parseStudentRecords = (text, semestersList) => {
+    const lines = text.split('\n');
+    const records = [];
+    const sems = semestersList && semestersList.length > 0 ? semestersList : [
+      { key: 's11', label: '1-1' },
+      { key: 's12', label: '1-2' },
+      { key: 's21', label: '2-1' },
+      { key: 's22', label: '2-2' },
+      { key: 's31', label: '3-1' }
+    ];
+
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      
+      let parts = line.split('\t');
+      if (parts.length < 3) {
+        parts = line.split(/\s{2,}/);
+      }
+      
+      if (parts.length >= 3) {
+        const rollCandidate = parts[0].trim();
+        const rollRegex = /^\d{2}[a-z\d]{8}$|^\d{3}q[a-z\d]{6}$/i;
+        
+        if (rollRegex.test(rollCandidate)) {
+          const roll = rollCandidate.toUpperCase();
+          const name = parts[1].trim().toUpperCase();
+          const backlogCount = parseInt(parts[2].trim()) || 0;
+          
+          const backlogFields = {};
+          let totalBacklogsCalculated = 0;
+          
+          for (let i = 0; i < sems.length; i++) {
+            const semKey = sems[i].key;
+            const colIndex = 3 + i;
+            
+            if (parts[colIndex] !== undefined) {
+              const rawCol = parts[colIndex];
+              const subs = rawCol.split(',')
+                .map(s => s.trim().toUpperCase())
+                .filter(s => s && s !== '-' && s !== '--');
+              
+              backlogFields[semKey] = subs.join(',');
+              totalBacklogsCalculated += subs.length;
+            } else {
+              backlogFields[semKey] = '';
+            }
+          }
+          
+          records.push({
+            roll,
+            name,
+            backlogCount: totalBacklogsCalculated || backlogCount,
+            ...backlogFields
+          });
+        }
+      }
+    }
+    return records;
+  };
+
+  // Find uploaded data in history
+  const findUploadedDataInHistory = () => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.sender === 'user' && detectStudentData(msg.text)) {
+        return msg.text;
+      }
+    }
+    return null;
+  };
+
+  // Get student records parsed from history
+  const getChatHistoryStudents = () => {
+    let allParsed = [];
+    const rollsSeen = new Set();
+    messages.forEach(msg => {
+      if (msg.sender === 'user' && detectStudentData(msg.text)) {
+        const parsed = parseStudentRecords(msg.text, semesters);
+        parsed.forEach(p => {
+          if (!rollsSeen.has(p.roll)) {
+            rollsSeen.add(p.roll);
+            allParsed.push(p);
+          }
+        });
+      }
+    });
+    return allParsed;
+  };
+
+  // Import Action Handler
+  const handleImportData = (parsedRecords) => {
+    if (!parsedRecords || parsedRecords.length === 0) return;
+    
+    const newFullList = studentInfoData.map(existing => {
+      const parsed = parsedRecords.find(p => p.roll.toUpperCase() === existing.roll.toUpperCase());
+      if (parsed) {
+        const merged = {
+          ...existing,
+          name: parsed.name || existing.name,
+          backlogs: parsed.backlogCount,
+          backlogSubs: Object.keys(parsed)
+            .filter(k => semesters.some(sem => sem.key === k))
+            .map(k => parsed[k])
+            .filter(Boolean)
+            .join(',')
+        };
+        semesters.forEach(sem => {
+          merged[sem.key] = parsed[sem.key] !== undefined ? parsed[sem.key] : existing[sem.key] || '';
+        });
+        return merged;
+      }
+      return existing;
+    });
+
+    parsedRecords.forEach(parsed => {
+      const exists = studentInfoData.some(existing => existing.roll.toUpperCase() === parsed.roll.toUpperCase());
+      if (!exists) {
+        const newStudent = {
+          roll: parsed.roll,
+          name: parsed.name,
+          team: 'Team-1',
+          cls: 'K12AIDHA',
+          room: '',
+          phone: '',
+          parentName: '',
+          p1: '',
+          p2: '',
+          email: '',
+          laptop: 'no',
+          club: '',
+          abcId: '',
+          project: '',
+          status: null,
+          backlogs: parsed.backlogCount,
+          backlogSubs: Object.keys(parsed)
+            .filter(k => semesters.some(sem => sem.key === k))
+            .map(k => parsed[k])
+            .filter(Boolean)
+            .join(',')
+        };
+        semesters.forEach(sem => {
+          newStudent[sem.key] = parsed[sem.key] || '';
+        });
+        newFullList.push(newStudent);
+      }
+    });
+
+    setStudentInfoData(newFullList);
+    setCurrentView('backlogs');
+
+    const confirmMsg = {
+      sender: 'bot',
+      text: `Successfully synced database with **${parsedRecords.length} student records**! Database now has **${newFullList.length} total students**.`,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, confirmMsg]);
+  };
+
+  // Preview Parsed Table Handler
+  const handleShowParsedTable = (parsedRecords) => {
+    if (!parsedRecords || parsedRecords.length === 0) return;
+    
+    const semHeaders = semesters.map(sem => sem.label);
+    const headers = ["Roll No", "Student Name", "Total Backlogs", ...semHeaders];
+    
+    const rows = parsedRecords.map(r => {
+      const semVals = semesters.map(sem => r[sem.key] || 'Clear');
+      return [r.roll, r.name, r.backlogCount, ...semVals];
+    });
+
+    const botMsg = {
+      sender: 'bot',
+      text: `Here is the parsed student backlog table (${parsedRecords.length} records):`,
+      table: {
+        headers,
+        rows
+      },
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, botMsg]);
+  };
+
   // Smart local NLP solver
   const solveQuery = (query) => {
     const cleanQuery = query.toLowerCase().trim();
     const allSt = getAllCombinedStudents();
+    
+    // --- A. Detect Student Data Upload/Paste ---
+    if (detectStudentData(query)) {
+      const parsed = parseStudentRecords(query, semesters);
+      if (parsed.length > 0) {
+        return {
+          text: `I detected a list of **${parsed.length} student records** in your message! You can import this data to update the portal database.`,
+          parsedRecords: parsed
+        };
+      }
+    }
+
+    // --- B. Import/Sync Commands from History ---
+    if (/\b(import|update|sync|check|process)\b/i.test(cleanQuery) && /\b(chat|uploaded|uploaded data|pasted|history|records|tsv|data)\b/i.test(cleanQuery)) {
+      const histText = findUploadedDataInHistory();
+      if (histText) {
+        const parsed = parseStudentRecords(histText, semesters);
+        if (parsed.length > 0) {
+          return {
+            text: `I scanned the chatbox history and found a dataset of **${parsed.length} student records**. Would you like to import it to update the database?`,
+            parsedRecords: parsed
+          };
+        }
+      } else {
+        return { text: "I searched the chat history but couldn't find any user-uploaded student datasets. Please paste your student list/backlogs table here first!" };
+      }
+    }
+
+    // --- C. Conversational greetings ---
+    const greetings = ['hello', 'hi', 'hey', 'greetings', 'morning', 'afternoon', 'evening', 'good morning', 'thanks', 'thank you', 'clear', 'chat', 'help', 'ok', 'okay', 'proceed'];
+    const isGreeting = greetings.some(g => cleanQuery === g || cleanQuery.startsWith(g + ' ') || cleanQuery.endsWith(' ' + g));
+    if (isGreeting) {
+      if (cleanQuery.includes('thank')) {
+        return { text: "You're very welcome! Let me know if you need anything else." };
+      }
+      return {
+        text: "Hello! I am your Hostel Bot Assistant. You can ask me anything about class members, parent contacts, backlogs, attendance, or switch views. You can also paste tables of student data to update the database!"
+      };
+    }
+
+    // --- D. Natural Language Database Updates ---
+    const updateRegex = /\b(change|update|set|edit)\b/i;
+    if (updateRegex.test(cleanQuery)) {
+      let targetStudentForUpdate = null;
+      
+      const rollMatch = cleanQuery.match(/\b\d{2}[a-z\d]{8}\b|\b\d{3}q[a-z\d]{6}\b/i);
+      if (rollMatch) {
+        const matchRoll = rollMatch[0].toUpperCase();
+        targetStudentForUpdate = allSt.find(s => s.roll.toUpperCase() === matchRoll);
+      }
+      
+      if (!targetStudentForUpdate) {
+        for (const st of allSt) {
+          if (cleanQuery.includes(st.name.toLowerCase())) {
+            targetStudentForUpdate = st;
+            break;
+          }
+        }
+      }
+
+      if (targetStudentForUpdate) {
+        let field = null;
+        let value = null;
+        
+        const roomMatch = cleanQuery.match(/\broom\b/i);
+        const phoneMatch = cleanQuery.match(/\b(phone|contact|number|mobile)\b/i);
+        const emailMatch = cleanQuery.match(/\b(email|mail)\b/i);
+        const clubMatch = cleanQuery.match(/\bclub\b/i);
+        const projectMatch = cleanQuery.match(/\b(project|hackathon)\b/i);
+        const laptopMatch = cleanQuery.match(/\blaptop\b/i);
+        const statusMatch = cleanQuery.match(/\b(status|attendance|present|absent)\b/i);
+        const teamMatch = cleanQuery.match(/\bteam\b/i);
+        const parentMatch = cleanQuery.match(/\b(parent|father|mother)\b/i);
+
+        if (roomMatch) field = 'room';
+        else if (parentMatch && phoneMatch) field = 'p1';
+        else if (phoneMatch) field = 'phone';
+        else if (emailMatch) field = 'email';
+        else if (clubMatch) field = 'club';
+        else if (projectMatch) field = 'project';
+        else if (laptopMatch) field = 'laptop';
+        else if (statusMatch) field = 'status';
+        else if (teamMatch) field = 'team';
+        else if (parentMatch) field = 'parentName';
+
+        const valueMatch = cleanQuery.match(/\b(to|is|as)\s+(.+)$/i);
+        if (valueMatch) {
+          value = valueMatch[2].trim();
+        } else {
+          let cleaned = cleanQuery
+            .replace(/\b(change|update|set|edit)\b/i, '')
+            .replace(targetStudentForUpdate.roll.toLowerCase(), '')
+            .replace(targetStudentForUpdate.name.toLowerCase(), '')
+            .replace(/\b(room|phone|contact|number|mobile|email|mail|club|project|hackathon|laptop|status|attendance|team|parent|father|mother)\b/i, '')
+            .trim();
+          if (cleaned) {
+            value = cleaned;
+          }
+        }
+
+        if (field && value) {
+          if (field === 'laptop') {
+            value = (value.toLowerCase().includes('yes') || value.toLowerCase().includes('have') || value.toLowerCase().includes('has')) ? 'yes' : 'no';
+          }
+          if (field === 'status') {
+            value = (value.toLowerCase().includes('present') || value.toLowerCase().includes('here')) ? 'present' : 'absent';
+          }
+
+          if (field === 'room' || field === 'team' || field === 'club' || field === 'project') {
+            value = value.toUpperCase();
+          }
+
+          const updatedRecord = { ...targetStudentForUpdate, [field]: value };
+          
+          setTimeout(() => {
+            updateStudentInBothStates(updatedRecord);
+          }, 50);
+
+          return {
+            text: `Successfully updated **${targetStudentForUpdate.name}**'s **${field}** to **"${value}"** in the database.`,
+            studentCard: updatedRecord
+          };
+        }
+      }
+    }
+
+    // --- E. Queries against History Uploaded Data ---
+    if (/\b(uploaded|uploaded data|pasted|chatbox data|chat data)\b/i.test(cleanQuery)) {
+      const histSt = getChatHistoryStudents();
+      if (histSt.length > 0) {
+        if (/\b(1-1|s11|first sem|1st sem)\b/i.test(cleanQuery)) {
+          const failed = histSt.filter(s => s.s11 && s.s11.trim() !== '' && s.s11 !== '-');
+          if (failed.length === 0) {
+            return { text: "No students in the uploaded chatbox data have backlogs in Semester 1-1." };
+          }
+          const rows = failed.map(s => [s.roll, s.name, s.s11]);
+          return {
+            text: `According to the uploaded data, **${failed.length} students** have 1-1 backlogs:`,
+            table: {
+              headers: ["Roll No", "Student Name", "Subjects (Uploaded)"],
+              rows
+            }
+          };
+        }
+        const failed = histSt.filter(s => s.backlogCount > 0);
+        const rows = failed.map(s => [s.roll, s.name, s.backlogCount]);
+        return {
+          text: `According to the uploaded data, **${failed.length} students** have active backlogs:`,
+          table: {
+            headers: ["Roll No", "Student Name", "Backlogs Count (Uploaded)"],
+            rows
+          }
+        };
+      } else {
+        return { text: "I couldn't find any uploaded student data in the chatbox history. Please paste the list of students first." };
+      }
+    }
     
     // --- 1. Find Navigation Intents ---
     if (/\b(go to|open|switch to|navigate to|show me)\b/i.test(cleanQuery)) {
@@ -346,12 +706,10 @@ export const ChatBot = ({
         
         let score = 0;
         
-        // 1. Full name match (contains clean name or raw name)
         if (cleanQuery.includes(cleanStudentName) || cleanQuery.includes(nameLower)) {
           score += 10;
         }
         
-        // 2. Part matching (student name parts in query)
         nameParts.forEach(part => {
           const partRegex = new RegExp(`\\b${part}\\b`, 'i');
           if (partRegex.test(cleanQuery)) {
@@ -359,7 +717,6 @@ export const ChatBot = ({
           }
         });
 
-        // 3. Query words matching name parts exactly
         queryWords.forEach(word => {
           if (nameParts.includes(word)) {
             score += 1;
@@ -378,12 +735,10 @@ export const ChatBot = ({
         if (topMatches.length === 1) {
           targetStudent = topMatches[0];
         } else {
-          // If multiple top matches, check if only one student's full name is in the query
           const exactFullMatches = topMatches.filter(s => cleanQuery.includes(s.name.toLowerCase()));
           if (exactFullMatches.length === 1) {
             targetStudent = exactFullMatches[0];
           } else {
-            // Ambiguity found - return a list of matched students
             const rows = topMatches.map(s => [s.roll, s.name, s.team.split(' ')[0], s.room || 'N/A']);
             return {
               text: `I found ${topMatches.length} students matching your query. Which one did you mean?`,
@@ -397,7 +752,6 @@ export const ChatBot = ({
       }
     }
 
-    // If still no student match, check for last 4 digits of roll suffix (e.g. "45a4", "4525")
     if (!targetStudent) {
       for (const st of allSt) {
         const suffix = st.roll.slice(-4).toLowerCase();
@@ -412,9 +766,6 @@ export const ChatBot = ({
     if (targetStudent) {
       const name = targetStudent.name;
       
-      // Determine what specific attribute is being asked (Targeted Data Extraction)
-      
-      // 3.1. Parent Name
       if (/\b(parent(\s*name)?|father|mother|dad|mom|guardian|parentname)\b/i.test(cleanQuery) && 
           !/\b(phone|contact|number|mobile|call|p1|p2)\b/i.test(cleanQuery)) {
         return {
@@ -426,7 +777,6 @@ export const ChatBot = ({
         };
       }
       
-      // 3.2. Parent Contacts (p1, p2)
       if (/\b(parent(\s*phone|\s*contact|\s*number|\s*mobile)|p1|p2|father(\s*phone|\s*contact|\s*number)|mother(\s*phone|\s*contact|\s*number)|dad(\s*phone|\s*contact|\s*number)|mom(\s*phone|\s*contact|\s*number))\b/i.test(cleanQuery)) {
         const contacts = [targetStudent.p1, targetStudent.p2].filter(Boolean).join(', ');
         return {
@@ -438,7 +788,6 @@ export const ChatBot = ({
         };
       }
       
-      // 3.3. Student Personal Phone
       if (/\b(phone|number|mobile|contact|cell|ph)\b/i.test(cleanQuery) && 
           !/\b(parent|father|mother|dad|mom|p1|p2)\b/i.test(cleanQuery)) {
         return {
@@ -450,8 +799,24 @@ export const ChatBot = ({
         };
       }
       
-      // 3.4. Email
-      if (/\b(email|mail|gmail|address)\b/i.test(cleanQuery)) {
+      if (/\b(address|village|mandal|district|state|pincode|home\s*address)\b/i.test(cleanQuery)) {
+        const fullAddress = [
+          targetStudent.village,
+          targetStudent.mandal,
+          targetStudent.district,
+          targetStudent.state,
+          targetStudent.pincode
+        ].filter(Boolean).join(', ');
+        return {
+          text: `Home Address for ${name}:`,
+          table: {
+            headers: ["Student Name", "Home Address"],
+            rows: [[name, fullAddress || 'Not recorded']]
+          }
+        };
+      }
+
+      if (/\b(email|mail|gmail)\b/i.test(cleanQuery)) {
         return {
           text: `Email for ${name}:`,
           table: {
@@ -461,7 +826,6 @@ export const ChatBot = ({
         };
       }
       
-      // 3.5. Room Number
       if (/\b(room|hostel\s*room|bed)\b/i.test(cleanQuery)) {
         return {
           text: `Room allocation for ${name}:`,
@@ -472,7 +836,6 @@ export const ChatBot = ({
         };
       }
       
-      // 3.6. Team Name
       if (/\b(team|group|gang)\b/i.test(cleanQuery)) {
         return {
           text: `Team for ${name}:`,
@@ -483,7 +846,6 @@ export const ChatBot = ({
         };
       }
       
-      // 3.7. Club Name
       if (/\b(club|clubs|activity)\b/i.test(cleanQuery)) {
         return {
           text: `Club assignment for ${name}:`,
@@ -494,7 +856,6 @@ export const ChatBot = ({
         };
       }
       
-      // 3.8. ABC ID
       if (/\b(abc|abc\s*id|academic\s*bank)\b/i.test(cleanQuery)) {
         return {
           text: `ABC ID for ${name}:`,
@@ -505,7 +866,6 @@ export const ChatBot = ({
         };
       }
       
-      // 3.9. Laptop Status
       if (/\b(laptop|pc|computer|system)\b/i.test(cleanQuery)) {
         const hasLaptop = String(targetStudent.laptop).toLowerCase() === 'yes';
         return {
@@ -517,7 +877,6 @@ export const ChatBot = ({
         };
       }
       
-      // 3.10. Hackathon Project
       if (/\b(project|hackathon|project\s*name|topic|work)\b/i.test(cleanQuery)) {
         return {
           text: `Allocated Project for ${name}:`,
@@ -528,7 +887,6 @@ export const ChatBot = ({
         };
       }
 
-      // 3.11. Attendance Status
       if (/\b(attendance|status|today|present|absent)\b/i.test(cleanQuery) && !/\b(backlog|fail)\b/i.test(cleanQuery)) {
         const status = targetStudent.status;
         const statusText = status === 'present' ? 'Present' : status === 'absent' ? 'Absent' : 'Not marked yet';
@@ -541,7 +899,6 @@ export const ChatBot = ({
         };
       }
 
-      // 3.12. Semester-Specific Backlogs
       const requestedSems = getSemesterBacklogs(targetStudent, cleanQuery);
       if (requestedSems && requestedSems.length > 0) {
         const rows = requestedSems.map(sem => {
@@ -558,7 +915,6 @@ export const ChatBot = ({
         };
       }
       
-      // 3.13. Generic Backlogs (if backlog is mentioned but no semester is specified)
       if (/\b(backlog|backlogs|fail|fails|subjects)\b/i.test(cleanQuery)) {
         const total = targetStudent.backlogs;
         const subjects = targetStudent.backlogSubs || 'None';
@@ -574,7 +930,6 @@ export const ChatBot = ({
         };
       }
 
-      // 3.14. Fallback: If they just ask the student name/who is/details, show complete profile card!
       return {
         text: `Here is the profile for ${name}:`,
         studentCard: targetStudent
@@ -606,7 +961,6 @@ export const ChatBot = ({
     }
 
     if (matchedSem && /\b(backlog|backlogs|fail|fails|sub wise|subject wise|subject-wise)\b/i.test(cleanQuery)) {
-      // 4.1. Subject-Wise Backlog Count for this specific Semester
       if (/\b(sub wise|subject wise|subject-wise)\b/i.test(cleanQuery)) {
         const subjectCounts = {};
         allSt.forEach(s => {
@@ -641,7 +995,6 @@ export const ChatBot = ({
         };
       }
 
-      // 4.2. Student List with Backlogs for this specific Semester
       const failedStudents = allSt.filter(s => {
         const val = s[matchedSem.key] || '';
         return val.trim() !== '' && val !== '-';
@@ -663,7 +1016,6 @@ export const ChatBot = ({
 
     // --- 5. Class-Wide Queries ---
     
-    // 5.1. Laptop Missing / Laptop Status
     if (/\b(no laptop|without laptop|don't have laptop|laptops)\b/i.test(cleanQuery)) {
       if (cleanQuery.includes('how many') || cleanQuery.includes('count')) {
         const count = allSt.filter(s => s.laptop === 'no').length;
@@ -680,7 +1032,6 @@ export const ChatBot = ({
       };
     }
 
-    // 5.2. Absentees Today
     if (/\b(absent|absentees|not present|not here)\b/i.test(cleanQuery)) {
       const absents = allSt.filter(s => s.status === 'absent');
       if (absents.length === 0) {
@@ -696,7 +1047,6 @@ export const ChatBot = ({
       };
     }
 
-    // 5.3. Present Today
     if (/\b(present|attendees|here)\b/i.test(cleanQuery) && !/\b(absent)\b/i.test(cleanQuery)) {
       const presents = allSt.filter(s => s.status === 'present');
       if (presents.length === 0) {
@@ -705,7 +1055,6 @@ export const ChatBot = ({
       return { text: `Currently, ${presents.length} students are marked present out of ${allSt.length} total.` };
     }
 
-    // 5.4. Low Attendance
     if (/\b(low attendance|warning|below 75|under 75|attendance warning)\b/i.test(cleanQuery)) {
       const dates = Object.keys(attendanceHistory);
       if (dates.length === 0) {
@@ -749,7 +1098,6 @@ export const ChatBot = ({
       };
     }
 
-    // 5.5. General Backlogs Query
     if (/\b(who has backlog|list backlogs|backlog list|failed students)\b/i.test(cleanQuery) || 
         cleanQuery === 'backlogs' || cleanQuery === 'backlog') {
       const backlogSt = allSt.filter(s => s.backlogs > 0);
@@ -768,7 +1116,6 @@ export const ChatBot = ({
       };
     }
 
-    // 5.6. Backlog Wise Count (Breakdown/Distribution)
     if (/\b(backlog wise count|backlog breakdown|backlog distribution|backlog stats|backlog count)\b/i.test(cleanQuery)) {
       const breakdown = {};
       let totalCount = 0;
@@ -793,12 +1140,15 @@ export const ChatBot = ({
       };
     }
 
-    // 5.6.5. Subject-Wise Backlog Count (Sub-Wise Count)
-    if (/\b(sub wise count|subject wise count|subject wise backlog|sub wise backlog|subject wise backlog count|subject-wise)\b/i.test(cleanQuery)) {
+    // --- 5.6. Subject-Wise Backlog Count & Summary ---
+    if (/\b(sub wise count|subject wise count|subject wise backlog|sub wise backlog|subject wise backlog count|subject-wise|backlogs? count|count of backlogs?|backlogs? summary|summary of backlogs?|backlog wise count|backlog stats|backlog breakdown|backlog distribution|overall backlog summary|backlog report)\b/i.test(cleanQuery) || 
+        cleanQuery === 'count' || cleanQuery === 'summary') {
       const subjectCounts = {};
       const semKeys = ['s11', 's12', 's21', 's22', 's31'];
+      let failedStudentsCount = 0;
       
       allSt.forEach(s => {
+        let hasBacklog = false;
         semKeys.forEach(sem => {
           const field = s[sem] || '';
           if (field && field.trim() !== '') {
@@ -806,10 +1156,12 @@ export const ChatBot = ({
               const name = sub.trim().toUpperCase();
               if (name && name !== '-' && name !== '') {
                 subjectCounts[name] = (subjectCounts[name] || 0) + 1;
+                hasBacklog = true;
               }
             });
           }
         });
+        if (hasBacklog) failedStudentsCount++;
       });
       
       const sortedSubjects = Object.entries(subjectCounts)
@@ -817,74 +1169,25 @@ export const ChatBot = ({
         .sort((a, b) => b.count - a.count);
         
       if (sortedSubjects.length === 0) {
-        return { text: "No subject-wise backlogs recorded! All students are clear." };
+        return { text: "No backlogs recorded! All students are clear." };
       }
       
       const totalInstances = sortedSubjects.reduce((acc, item) => acc + item.count, 0);
-      const rows = sortedSubjects.map(item => [item.subject, item.count]);
+      const textList = sortedSubjects.map(item => `Count of ${item.subject}: ${item.count}`).join('\n');
       
       return {
-        text: `Subject-Wise Backlog Count (Total instances: ${totalInstances}):`,
+        text: `Backlog Count Summary (Total failures: ${totalInstances} across ${failedStudentsCount} students):\n\n${textList}`,
         table: {
-          headers: ["Subject Code", "Number of Failures"],
-          rows: rows
+          headers: ["Subject Code", "Summary Count"],
+          rows: sortedSubjects.map(item => [item.subject, `Count of ${item.subject}: ${item.count}`])
         }
       };
     }
 
-    // 5.6.8. Total Backlogs Summary
-    if (/\b(total backlogs summary|backlogs summary|backlog summary|overall backlog summary|backlog report)\b/i.test(cleanQuery)) {
-      const backlogStudents = allSt.filter(s => s.backlogs > 0);
-      const totalStudents = allSt.length;
-      const totalBacklogInstances = backlogStudents.reduce((acc, s) => acc + (s.backlogs || 0), 0);
-      
-      // Calculate most common subject
-      const subjectCounts = {};
-      const semKeys = ['s11', 's12', 's21', 's22', 's31'];
-      allSt.forEach(s => {
-        semKeys.forEach(sem => {
-          const field = s[sem] || '';
-          if (field && field.trim() !== '') {
-            field.split(',').forEach(sub => {
-              const name = sub.trim().toUpperCase();
-              if (name && name !== '-' && name !== '') {
-                subjectCounts[name] = (subjectCounts[name] || 0) + 1;
-              }
-            });
-          }
-        });
-      });
-      const sortedSubjects = Object.entries(subjectCounts).sort((a, b) => b[1] - a[1]);
-      const mostCommonSub = sortedSubjects.length > 0 ? `${sortedSubjects[0][0]} (${sortedSubjects[0][1]} failures)` : 'None';
-
-      const maxBacklogs = backlogStudents.length > 0 ? Math.max(...backlogStudents.map(s => s.backlogs)) : 0;
-      const maxBacklogStudent = maxBacklogs > 0 ? backlogStudents.find(s => s.backlogs === maxBacklogs) : null;
-      const maxBacklogText = maxBacklogStudent ? `${maxBacklogStudent.name} (${maxBacklogs} backlogs)` : 'N/A';
-
-      const avgBacklogs = backlogStudents.length > 0 ? (totalBacklogInstances / backlogStudents.length).toFixed(1) : '0';
-
-      return {
-        text: "Class Backlog Summary Report:",
-        table: {
-          headers: ["Metric", "Value"],
-          rows: [
-            ["Total Enrolled Students", totalStudents],
-            ["Students with Backlogs", `${backlogStudents.length} (${Math.round((backlogStudents.length/totalStudents)*100)}%)`],
-            ["Total Backlog Instances", totalBacklogInstances],
-            ["Average Backlogs (affected students)", avgBacklogs],
-            ["Most Common Backlog Subject", mostCommonSub],
-            ["Highest Backlog Count (Student)", maxBacklogText]
-          ]
-        }
-      };
-    }
-
-    // 5.7. Class Size / Total Students
     if (/\b(how many students|total students|class size|student count)\b/i.test(cleanQuery)) {
       return { text: `There are a total of ${allSt.length} students enrolled in this class/hostel portal.` };
     }
 
-    // 5.8. Team List Query
     if (/\b(team-\d+|team \d+)\b/i.test(cleanQuery)) {
       const match = cleanQuery.match(/team-?\s*(\d+)/i);
       const teamNum = match ? match[1] : '';
@@ -904,7 +1207,6 @@ export const ChatBot = ({
       };
     }
 
-    // 5.9. Club Query
     if (/\b(gcc|ncc|nss|robotics|khub|k-hub|coding club)\b/i.test(cleanQuery)) {
       const match = cleanQuery.match(/\b(gcc|ncc|nss|robotics|khub|k-hub)\b/i);
       const clubName = match ? match[0].toUpperCase() : '';
@@ -924,7 +1226,6 @@ export const ChatBot = ({
       };
     }
 
-    // 5.10. Class Info / Stats general
     if (cleanQuery.includes('class') && (cleanQuery.includes('info') || cleanQuery.includes('detail') || cleanQuery.includes('stats'))) {
       const absentCount = allSt.filter(s => s.status === 'absent').length;
       const backlogCount = allSt.filter(s => s.backlogs > 0).length;
@@ -946,24 +1247,191 @@ export const ChatBot = ({
       };
     }
 
-    // --- 6. Final Fallback: Suggest actions ---
+    // --- 6. Generic Fuzzy Keyword / Attribute Search ---
+    const searchTerms = cleanQuery.split(/\s+/).filter(w => w.length >= 2);
+    if (searchTerms.length > 0) {
+      const matchedSt = allSt.filter(st => {
+        const searchableStr = [
+          st.roll,
+          st.name,
+          st.room,
+          st.phone,
+          st.parentName,
+          st.p1,
+          st.p2,
+          st.email,
+          st.club,
+          st.project,
+          st.team,
+          st.cls,
+          st.backlogSubs,
+          st.laptop,
+          st.status
+        ].map(x => String(x || '').toLowerCase()).join(' ');
+
+        return searchTerms.every(term => searchableStr.includes(term));
+      });
+
+      if (matchedSt.length > 0) {
+        if (matchedSt.length === 1) {
+          return {
+            text: `I found 1 student matching your search:`,
+            studentCard: matchedSt[0]
+          };
+        }
+        
+        const rows = matchedSt.map(s => [s.roll, s.name, s.room || 'N/A', s.team || 'N/A', s.backlogs || 0]);
+        return {
+          text: `I found **${matchedSt.length} students** matching your search:`,
+          table: {
+            headers: ["Roll No", "Student Name", "Room", "Team", "Backlogs"],
+            rows: rows
+          }
+        };
+      }
+    }
+
+    // --- 7. Smart Vague / General Intent Handler ---
+
+    // "who" questions about the class
+    if (/\bwho\b/i.test(cleanQuery)) {
+      if (/\btopper|best|rank\b/i.test(cleanQuery)) {
+        const cleared = allSt.filter(s => !s.backlogs || s.backlogs === 0);
+        return { text: `${cleared.length} students have zero backlogs in the class. That's your top performers!` };
+      }
+      if (/\bmost backlog|most fail\b/i.test(cleanQuery)) {
+        const sorted = [...allSt].filter(s => s.backlogs > 0).sort((a, b) => b.backlogs - a.backlogs).slice(0, 5);
+        if (sorted.length === 0) return { text: 'No student has any backlogs currently!' };
+        const rows = sorted.map(s => [s.roll, s.name, s.backlogs]);
+        return { text: 'Students with the most backlogs:', table: { headers: ['Roll No', 'Name', 'Backlogs'], rows } };
+      }
+      // Generic "who" → show all students list
+      const rows = allSt.slice(0, 20).map(s => [s.roll, s.name, s.team || 'N/A']);
+      return {
+        text: `Here are the students in the class (showing ${Math.min(20, allSt.length)} of ${allSt.length}):`,
+        table: { headers: ['Roll No', 'Name', 'Team'], rows }
+      };
+    }
+
+    // "how many" general counts
+    if (/\bhow many\b/i.test(cleanQuery)) {
+      if (/\bbacklog\b/i.test(cleanQuery)) {
+        const n = allSt.filter(s => s.backlogs > 0).length;
+        return { text: `${n} out of ${allSt.length} students have active backlogs.` };
+      }
+      if (/\blaptop\b/i.test(cleanQuery)) {
+        const yes = allSt.filter(s => s.laptop === 'yes').length;
+        return { text: `${yes} students have a laptop, and ${allSt.length - yes} do not.` };
+      }
+      if (/\bteam\b/i.test(cleanQuery)) {
+        const teams = new Set(allSt.map(s => s.team)).size;
+        return { text: `There are ${teams} teams in the class.` };
+      }
+      if (/\bclub\b/i.test(cleanQuery)) {
+        const inClub = allSt.filter(s => s.club && s.club !== '--' && s.club.trim() !== '').length;
+        return { text: `${inClub} students are part of a club.` };
+      }
+      if (/\bproject\b/i.test(cleanQuery)) {
+        const withProj = allSt.filter(s => s.project && s.project.trim() !== '').length;
+        return { text: `${withProj} students have been allocated a project.` };
+      }
+      return { text: `There are ${allSt.length} students total in the portal.` };
+    }
+
+    // "show all" / "list all" / "give me"
+    if (/\b(show all|list all|give me|display all)\b/i.test(cleanQuery)) {
+      if (/\bstudent|class|member\b/i.test(cleanQuery)) {
+        const rows = allSt.map((s, i) => [i + 1, s.roll, s.name, s.team || 'N/A']);
+        return { text: `All ${allSt.length} students in the class:`, table: { headers: ['S.No', 'Roll No', 'Name', 'Team'], rows } };
+      }
+      if (/\bteam\b/i.test(cleanQuery)) {
+        const teamMap = {};
+        allSt.forEach(s => { teamMap[s.team] = (teamMap[s.team] || 0) + 1; });
+        const rows = Object.entries(teamMap).map(([t, c]) => [t, c]);
+        return { text: 'Team-wise student count:', table: { headers: ['Team', 'Count'], rows } };
+      }
+      if (/\bbacklog\b/i.test(cleanQuery)) {
+        const bl = allSt.filter(s => s.backlogs > 0).sort((a, b) => b.backlogs - a.backlogs);
+        const rows = bl.map(s => [s.roll, s.name, s.backlogs]);
+        return { text: `All ${bl.length} students with backlogs:`, table: { headers: ['Roll No', 'Name', 'Backlogs'], rows } };
+      }
+    }
+
+    // "attendance" general query
+    if (/\battendance\b/i.test(cleanQuery)) {
+      const dates = Object.keys(attendanceHistory || {});
+      if (dates.length === 0) {
+        return { text: "No attendance has been recorded yet. Go to 'Mark Attendance' to start!" };
+      }
+      const latest = dates.sort().slice(-1)[0];
+      const reports = attendanceHistory[latest] || [];
+      let p = 0, t = 0;
+      reports.forEach(r => (r.students || []).forEach(s => { t++; if (s.status === 'P') p++; }));
+      const pct = t > 0 ? Math.round((p / t) * 100) : 0;
+      return {
+        text: `Attendance Summary:\n- Total days recorded: ${dates.length}\n- Latest date: ${latest}\n- Last session: ${p}/${t} present (${pct}%)\n\nAsk "who is absent today?", "low attendance students", or a student name for more details!`
+      };
+    }
+
+    // "backlog" general
+    if (/\bbacklog\b/i.test(cleanQuery)) {
+      const n = allSt.filter(s => s.backlogs > 0).length;
+      const total = allSt.reduce((acc, s) => acc + (Number(s.backlogs) || 0), 0);
+      return { text: `Backlog Summary:\n- ${n} students have active backlogs\n- ${total} total backlog subjects\n\nAsk "who has backlogs?", "backlogs in 1-1", or a student name to dig deeper!` };
+    }
+
+    // "student" general
+    if (/\bstudent\b/i.test(cleanQuery)) {
+      return { text: `The class has ${allSt.length} students. You can:\n- Search by name or roll number\n- Ask "show all students"\n- Ask about a specific student like "show Akhil's details"` };
+    }
+
+    // "dashboard" or "summary" or "overview"
+    if (/\b(dashboard|summary|overview|stats|statistics|report)\b/i.test(cleanQuery)) {
+      const absentToday = allSt.filter(s => s.status === 'absent').length;
+      const withBacklogs = allSt.filter(s => s.backlogs > 0).length;
+      const noLaptop = allSt.filter(s => s.laptop === 'no').length;
+      const daysRecorded = Object.keys(attendanceHistory || {}).length;
+      return {
+        text: `Portal Overview for ${classInfo?.name || 'K12AIDHA'}:`,
+        table: {
+          headers: ['Metric', 'Value'],
+          rows: [
+            ['Total Students', allSt.length],
+            ['Absent Today', absentToday],
+            ['Students with Backlogs', withBacklogs],
+            ['No Laptop', noLaptop],
+            ['Attendance Days Logged', daysRecorded],
+            ['Min Attendance Policy', `${attendancePolicy?.minimumAttendance || 75}%`]
+          ]
+        }
+      };
+    }
+
+    // Very vague single-word or short queries — be friendly and guide
+    if (cleanQuery.split(/\s+/).length <= 2) {
+      const suggestions = [
+        `Try asking: "Who is absent today?"`,
+        `Try: "Show backlogs in 1-1"`,
+        `Try: "How many students have backlogs?"`,
+        `Try: "[Student Name]'s parent contact"`,
+        `Try: "Low attendance students"`,
+        `Try: "Show all students"`,
+      ];
+      return {
+        text: `I'm not sure what you're looking for with "${query}". Here are some things you can ask me:\n\n` +
+          suggestions.join('\n')
+      };
+    }
+
+    // Last resort — still try to be helpful
     return {
-      text: "I didn't quite catch that. Here are some examples of what you can ask me:\n\n" +
-            "**Specific Attribute Queries** (returns only the exact detail):\n" +
-            '- "What is M.PRASAD\'s parent contact?"\n' +
-            '- "Show parent name of K.RAMANA REDDY"\n' +
-            '- "What is Teja\'s email?"\n' +
-            '- "Show Akhil\'s laptop status"\n' +
-            '- "What backlogs does Prasad have in 1-1 semester?"\n\n' +
-            "**Full Profile Queries**:\n" +
-            '- "Who is Prasad?" or "Show details of student Hemanth"\n\n' +
-            "**Class-Wide Queries**:\n" +
-            '- "Who is absent today?"\n' +
-            '- "Who does not have a laptop?"\n' +
-            '- "List students with backlogs in 1-2"\n' +
-            '- "Who has low attendance?"\n\n' +
-            "**App Navigation**:\n" +
-            '- "Go to settings" or "Open backlogs view"'
+      text: `I couldn't find a specific answer for "${query}", but here's what I can help with:\n\n` +
+        `📋 **Student Info** — Ask about any student by name or roll number\n` +
+        `📅 **Attendance** — "Who is absent?", "Low attendance students"\n` +
+        `📚 **Backlogs** — "Who has backlogs?", "Backlogs in 1-1"\n` +
+        `🔀 **Navigation** — "Go to attendance log", "Open admin settings"\n` +
+        `📊 **Stats** — "How many students?", "Class overview"\n\n` +
+        `Try rephrasing your question with a student name, roll number, or a keyword like "attendance", "backlog", "phone", etc.`
     };
   };
 
@@ -995,6 +1463,7 @@ export const ChatBot = ({
         text: cleanText, 
         studentCard: response.studentCard, 
         table: cleanTable,
+        parsedRecords: response.parsedRecords,
         timestamp: new Date() 
       };
       setMessages(prev => [...prev, botMsg]);
@@ -1207,6 +1676,27 @@ export const ChatBot = ({
                             : 'bg-indigo-600 text-white border-indigo-600 font-medium'
                         }`}>
                           <div className="whitespace-pre-line">{msg.text}</div>
+
+                          {/* Render Import Action Buttons if present */}
+                          {msg.parsedRecords && (
+                            <div className="mt-3 flex flex-col gap-2 border-t border-gray-150 pt-3 select-none">
+                              <p className="text-xs text-gray-500 font-bold">Import Actions:</p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleImportData(msg.parsedRecords)}
+                                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-750 text-white font-bold rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
+                                >
+                                  Import & Sync Database
+                                </button>
+                                <button
+                                  onClick={() => handleShowParsedTable(msg.parsedRecords)}
+                                  className="flex-1 py-2 bg-gray-100 hover:bg-gray-150 text-gray-700 font-bold rounded-xl text-xs border border-gray-200 transition-colors cursor-pointer"
+                                >
+                                  Preview Parsed Table
+                                </button>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Render Table if present */}
                           {msg.table && (

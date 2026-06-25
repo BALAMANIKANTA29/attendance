@@ -5,13 +5,13 @@ import { getLocalDateString } from '../utils/dateUtils';
 
 const DEFAULT_SEMESTERS = [
     { key: 's11', label: 'Semester 1-1', short: '1-1', color: 'indigo' },
-    { key: 's12', label: 'Semester 1-2', short: '1-2', color: 'violet' },
+    { key: 's12', label: 'Semester 1-2', short: '1-2', color: 'sky' },
     { key: 's21', label: 'Semester 2-1', short: '2-1', color: 'blue' },
     { key: 's22', label: 'Semester 2-2', short: '2-2', color: 'cyan' },
     { key: 's31', label: 'Semester 3-1', short: '3-1', color: 'teal' },
 ];
 
-const COLOR_KEYS = ['indigo', 'violet', 'blue', 'cyan', 'teal', 'purple', 'pink', 'emerald', 'amber', 'rose'];
+const COLOR_KEYS = ['indigo', 'sky', 'blue', 'cyan', 'teal', 'slate', 'pink', 'emerald', 'amber', 'rose'];
 
 // Convert a semesters prop entry to the full format SubjectWiseView expects
 const normalizeSemesters = (sems) =>
@@ -24,11 +24,11 @@ const normalizeSemesters = (sems) =>
 
 const COLOR_MAP = {
     indigo: { header: 'bg-indigo-600', badge: 'bg-indigo-100 text-indigo-700', bar: 'bg-indigo-500', light: 'bg-indigo-50', ring: 'ring-indigo-400' },
-    violet: { header: 'bg-violet-600', badge: 'bg-violet-100 text-violet-700', bar: 'bg-violet-500', light: 'bg-violet-50', ring: 'ring-violet-400' },
+    sky:    { header: 'bg-sky-600', badge: 'bg-sky-100 text-sky-700', bar: 'bg-sky-500', light: 'bg-sky-50', ring: 'ring-sky-400' },
     blue: { header: 'bg-blue-600', badge: 'bg-blue-100 text-blue-700', bar: 'bg-blue-500', light: 'bg-blue-50', ring: 'ring-blue-400' },
     cyan: { header: 'bg-cyan-600', badge: 'bg-cyan-100 text-cyan-700', bar: 'bg-cyan-500', light: 'bg-cyan-50', ring: 'ring-cyan-400' },
     teal: { header: 'bg-teal-600', badge: 'bg-teal-100 text-teal-700', bar: 'bg-teal-500', light: 'bg-teal-50', ring: 'ring-teal-400' },
-    purple: { header: 'bg-purple-600', badge: 'bg-purple-100 text-purple-700', bar: 'bg-purple-500', light: 'bg-purple-50', ring: 'ring-purple-400' },
+    slate:  { header: 'bg-slate-600', badge: 'bg-slate-100 text-slate-700', bar: 'bg-slate-500', light: 'bg-slate-50', ring: 'ring-slate-400' },
     pink: { header: 'bg-pink-600', badge: 'bg-pink-100 text-pink-700', bar: 'bg-pink-500', light: 'bg-pink-50', ring: 'ring-pink-400' },
     emerald: { header: 'bg-emerald-600', badge: 'bg-emerald-100 text-emerald-700', bar: 'bg-emerald-500', light: 'bg-emerald-50', ring: 'ring-emerald-400' },
     amber: { header: 'bg-amber-500', badge: 'bg-amber-100 text-amber-700', bar: 'bg-amber-400', light: 'bg-amber-50', ring: 'ring-amber-400' },

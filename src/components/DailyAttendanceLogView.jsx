@@ -587,9 +587,9 @@ export const DailyAttendanceLogView = ({
                   <p className="text-2xl font-bold text-red-600">{getAggregatedReport.absentCount}</p>
                   <p className="text-sm text-red-600">Total Absent</p>
                 </div>
-                <div className="text-center p-3 bg-purple-50 rounded-lg">
-                  <p className="text-2xl font-bold text-purple-600">{getAggregatedReport.totalDays}</p>
-                  <p className="text-sm text-purple-600">Total Days</p>
+                <div className="text-center p-3 bg-indigo-50 rounded-lg">
+                  <p className="text-2xl font-bold text-indigo-600">{getAggregatedReport.totalDays}</p>
+                  <p className="text-sm text-indigo-600">Total Days</p>
                 </div>
               </div>
               {/* Aggregated export hint */}

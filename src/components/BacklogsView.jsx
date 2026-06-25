@@ -266,6 +266,7 @@ export const BacklogsView = ({ students, setStudents, semesters: propSemesters, 
 
     const [search, setSearch] = useState('');
     const [filterMode, setFilterMode] = useState('all');
+    const [selectedBacklogCountFilter, setSelectedBacklogCountFilter] = useState(null);
     const [activeSems, setActiveSems] = useState(() => semesters.map(s => s.key));
     const [editingStudent, setEditingStudent] = useState(null);
     const [showSemesterManager, setShowSemesterManager] = useState(false);
@@ -323,6 +324,12 @@ export const BacklogsView = ({ students, setStudents, semesters: propSemesters, 
                     s.id.toLowerCase().includes(search.toLowerCase());
 
                 const bc = s.activeBacklogCount;
+                
+                // If a specific backlog count filter is clicked, filter by it directly
+                if (selectedBacklogCountFilter !== null) {
+                    return matchSearch && bc === selectedBacklogCountFilter;
+                }
+
                 let matchFilter;
                 if (filterMode === 'withBacklogs') {
                     matchFilter = bc > 0;
@@ -334,7 +341,7 @@ export const BacklogsView = ({ students, setStudents, semesters: propSemesters, 
 
                 return matchSearch && matchFilter;
             });
-    }, [studentsWithActiveCounts, search, filterMode]);
+    }, [studentsWithActiveCounts, search, filterMode, selectedBacklogCountFilter]);
 
     const totalBacklogs = useMemo(() => {
         return studentsWithActiveCounts.reduce((sum, s) => sum + s.activeBacklogCount, 0);
@@ -489,24 +496,51 @@ export const BacklogsView = ({ students, setStudents, semesters: propSemesters, 
             {/* Backlog Breakdown Details */}
             {backlogBreakdown.length > 0 && (
                 <div className="bg-white rounded-xl shadow p-5">
-                    <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
-                        <BookOpen className="w-4 h-4 text-indigo-500" />
-                        Backlog Distribution Breakdown
-                    </h3>
+                    <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-3 flex-wrap gap-2">
+                        <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                            <BookOpen className="w-4 h-4 text-indigo-500" />
+                            Backlog Distribution Breakdown
+                            {selectedBacklogCountFilter !== null && (
+                                <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2.5 py-0.5 rounded-full border border-indigo-200 animate-pulse">
+                                    Filtering: {selectedBacklogCountFilter} {selectedBacklogCountFilter === 1 ? 'Backlog' : 'Backlogs'}
+                                </span>
+                            )}
+                        </h3>
+                        {selectedBacklogCountFilter !== null && (
+                            <button
+                                onClick={() => setSelectedBacklogCountFilter(null)}
+                                className="text-xs text-red-600 hover:text-red-700 font-bold flex items-center gap-1 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg border border-red-200 transition-all active:scale-95 shadow-sm cursor-pointer"
+                            >
+                                <X className="w-3 h-3" /> Clear Filter
+                            </button>
+                        )}
+                    </div>
                     <div className="flex flex-wrap gap-3">
-                        {backlogBreakdown.map(({ backlogs, members }) => (
-                            <div key={backlogs} className="bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2 flex items-center gap-2 shadow-sm">
-                                <span className="font-bold text-indigo-700">{backlogs}</span>
-                                <span className="text-xs text-indigo-500 font-medium whitespace-nowrap">
-                                    {backlogs === 1 ? 'Backlog' : 'Backlogs'}
-                                </span>
-                                <span className="w-2 flex justify-center text-indigo-300 font-bold">:</span>
-                                <span className="font-bold text-gray-800">{members}</span>
-                                <span className="text-xs text-gray-500 font-medium whitespace-nowrap">
-                                    {members === 1 ? 'Member' : 'Members'}
-                                </span>
-                            </div>
-                        ))}
+                        {backlogBreakdown.map(({ backlogs, members }) => {
+                            const isActive = selectedBacklogCountFilter === backlogs;
+                            return (
+                                <button
+                                    key={backlogs}
+                                    onClick={() => setSelectedBacklogCountFilter(prev => prev === backlogs ? null : backlogs)}
+                                    className={`rounded-xl px-4 py-2.5 flex items-center gap-2 shadow-sm border transition-all duration-150 active:scale-95 cursor-pointer ${
+                                        isActive
+                                            ? 'bg-indigo-600 border-indigo-700 text-white hover:bg-indigo-700 font-bold'
+                                            : 'bg-indigo-50 border-indigo-100 text-gray-850 hover:bg-indigo-100/80 hover:border-indigo-200 font-medium'
+                                    }`}
+                                    title={`Click to filter students with exactly ${backlogs} backlog(s)`}
+                                >
+                                    <span className={`font-extrabold ${isActive ? 'text-white' : 'text-indigo-700'}`}>{backlogs}</span>
+                                    <span className={`text-xs font-bold whitespace-nowrap ${isActive ? 'text-indigo-100' : 'text-indigo-500'}`}>
+                                        {backlogs === 1 ? 'Backlog' : 'Backlogs'}
+                                    </span>
+                                    <span className={`w-2 flex justify-center font-bold ${isActive ? 'text-indigo-200' : 'text-indigo-300'}`}>:</span>
+                                    <span className={`font-bold ${isActive ? 'text-white' : 'text-gray-800'}`}>{members}</span>
+                                    <span className={`text-xs font-semibold whitespace-nowrap ${isActive ? 'text-indigo-150' : 'text-gray-500'}`}>
+                                        {members === 1 ? 'Member' : 'Members'}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -578,7 +612,7 @@ export const BacklogsView = ({ students, setStudents, semesters: propSemesters, 
                     ].map((opt) => (
                         <button
                             key={opt.value}
-                            onClick={() => setFilterMode(opt.value)}
+                            onClick={() => { setFilterMode(opt.value); setSelectedBacklogCountFilter(null); }}
                             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${filterMode === opt.value
                                 ? 'bg-indigo-600 text-white shadow'
                                 : 'bg-white border border-gray-300 text-gray-700 hover:bg-indigo-50'

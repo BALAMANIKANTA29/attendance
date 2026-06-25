@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Users, Calendar, Target, Database, Save, RefreshCw, CheckCircle } from 'lucide-react';
+import { Settings, Users, Calendar, Target, Database, Save, RefreshCw, CheckCircle, BookOpen, Plus, Trash2 } from 'lucide-react';
 
 export const AdminSettingsView = ({
   students,
@@ -10,7 +10,13 @@ export const AdminSettingsView = ({
   setAttendancePolicy,
   clearAttendanceHistory,
   directAccess,
-  setDirectAccess
+  setDirectAccess,
+  courses = [],
+  onRefreshCourses,
+  semesters = [],
+  setSemesters,
+  onNavigateToClassMembers,
+  userEmail
 }) => {
   const [activeTab, setActiveTab] = useState('students');
   const [isEditingClass, setIsEditingClass] = useState(false);
@@ -18,10 +24,98 @@ export const AdminSettingsView = ({
   const [editClassInfo, setEditClassInfo] = useState(classInfo);
   const [editPolicy, setEditPolicy] = useState(attendancePolicy);
 
+  const [newCourse, setNewCourse] = useState({ code: '', name: '' });
+  const [newSemester, setNewSemester] = useState({ key: '', label: '' });
+
+  const handleAddCourse = async (e) => {
+    e.preventDefault();
+    if (!newCourse.code.trim()) return;
+    try {
+      const res = await fetch('/api/courses', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-email': userEmail
+        },
+        body: JSON.stringify(newCourse)
+      });
+      if (res.ok) {
+        setNewCourse({ code: '', name: '' });
+        if (onRefreshCourses) onRefreshCourses();
+        alert('Course added successfully!');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteCourse = async (code) => {
+    if (!window.confirm(`Are you sure you want to delete course ${code}? This will remove it from all student backlog lists!`)) return;
+    try {
+      const res = await fetch(`/api/courses/${code}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-email': userEmail
+        }
+      });
+      if (res.ok) {
+        if (onRefreshCourses) onRefreshCourses();
+        alert('Course deleted successfully!');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAddSemester = async (e) => {
+    e.preventDefault();
+    if (!newSemester.key.trim() || !newSemester.label.trim()) return;
+    try {
+      const res = await fetch('/api/semesters', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-email': userEmail
+        },
+        body: JSON.stringify(newSemester)
+      });
+      if (res.ok) {
+        // Sync semesters state
+        const updatedSems = [...semesters, { key: newSemester.key.trim().toLowerCase(), label: newSemester.label.trim() }];
+        setSemesters(updatedSems);
+        setNewSemester({ key: '', label: '' });
+        alert('Semester added successfully!');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteSemester = async (key) => {
+    if (!window.confirm(`Are you sure you want to delete semester ${key}? This will clear all backlog entries for this semester!`)) return;
+    try {
+      const res = await fetch(`/api/semesters/${key}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-email': userEmail
+        }
+      });
+      if (res.ok) {
+        // Sync semesters state
+        const updatedSems = semesters.filter(s => s.key !== key);
+        setSemesters(updatedSems);
+        alert('Semester deleted successfully!');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const tabs = [
     { id: 'students', label: 'Student Management', icon: Users },
     { id: 'class', label: 'Class Settings', icon: Calendar },
     { id: 'policy', label: 'Attendance Policy', icon: Target },
+    { id: 'curriculum', label: 'Curriculum Settings', icon: BookOpen },
     { id: 'system', label: 'System Settings', icon: Database }
   ];
 
@@ -104,7 +198,7 @@ export const AdminSettingsView = ({
                 Manage student records, add new students, edit existing information, or remove students from the class.
               </p>
               <button
-                onClick={() => setActiveTab('students')}
+                onClick={() => onNavigateToClassMembers && onNavigateToClassMembers()}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg"
               >
                 Go to Student Management
@@ -188,9 +282,9 @@ export const AdminSettingsView = ({
                   <h4 className="font-semibold text-green-900">Current Semester</h4>
                   <p className="text-green-700">{classInfo.semester}</p>
                 </div>
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <h4 className="font-semibold text-purple-900">Academic Year</h4>
-                  <p className="text-purple-700">{classInfo.academicYear}</p>
+                <div className="bg-indigo-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-indigo-900">Academic Year</h4>
+                  <p className="text-indigo-700">{classInfo.academicYear}</p>
                 </div>
               </div>
             )}
@@ -311,6 +405,124 @@ export const AdminSettingsView = ({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'curriculum' && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-top-1 duration-300">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-semibold text-gray-900">Curriculum Settings</h3>
+              <div className="text-sm text-gray-600">
+                Manage your academic semesters and catalog of courses.
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Column: Courses Catalog */}
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <h4 className="font-bold text-gray-800 flex items-center text-lg">
+                  <BookOpen className="w-5 h-5 mr-2 text-indigo-600" /> Courses Catalog ({courses.length})
+                </h4>
+                
+                {/* Add Course Form */}
+                <form onSubmit={handleAddCourse} className="bg-gray-50 p-4 rounded-lg border border-gray-100 flex flex-col md:flex-row gap-3">
+                  <input
+                    type="text"
+                    required
+                    placeholder="CODE (e.g. DBMS)"
+                    value={newCourse.code}
+                    onChange={(e) => setNewCourse(prev => ({ ...prev, code: e.target.value }))}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md uppercase text-sm"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Course Name (e.g. Database Systems)"
+                    value={newCourse.name}
+                    onChange={(e) => setNewCourse(prev => ({ ...prev, name: e.target.value }))}
+                    className="flex-[2] px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center text-sm transition-colors"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </button>
+                </form>
+
+                {/* Courses List */}
+                <div className="max-h-96 overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-100">
+                  {courses.length === 0 ? (
+                    <div className="p-4 text-center text-gray-400 text-sm">No courses registered yet.</div>
+                  ) : (
+                    courses.map(course => (
+                      <div key={course.code} className="flex justify-between items-center p-3 hover:bg-gray-50 transition-colors">
+                        <div>
+                          <span className="font-mono font-bold text-indigo-600 text-sm bg-indigo-50 px-2 py-1 rounded mr-2">{course.code}</span>
+                          <span className="text-gray-700 text-sm font-medium">{course.name}</span>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteCourse(course.code)}
+                          className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Semesters Configuration */}
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <h4 className="font-bold text-gray-800 flex items-center text-lg">
+                  <Calendar className="w-5 h-5 mr-2 text-indigo-600" /> Semesters Configuration ({semesters.length})
+                </h4>
+
+                {/* Add Semester Form */}
+                <form onSubmit={handleAddSemester} className="bg-gray-50 p-4 rounded-lg border border-gray-100 flex flex-col md:flex-row gap-3">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Key (e.g. s32)"
+                    value={newSemester.key}
+                    onChange={(e) => setNewSemester(prev => ({ ...prev, key: e.target.value }))}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md lowercase text-sm"
+                  />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Label (e.g. 3-2)"
+                    value={newSemester.label}
+                    onChange={(e) => setNewSemester(prev => ({ ...prev, label: e.target.value }))}
+                    className="flex-[2] px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center text-sm transition-colors"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </button>
+                </form>
+
+                {/* Semesters List */}
+                <div className="border border-gray-100 rounded-lg divide-y divide-gray-100">
+                  {semesters.map(sem => (
+                    <div key={sem.key} className="flex justify-between items-center p-3 hover:bg-gray-50 transition-colors">
+                      <div>
+                        <span className="font-mono text-gray-500 text-sm font-semibold mr-3">{sem.key}</span>
+                        <span className="text-gray-900 font-bold bg-gray-100 px-2 py-1 rounded text-sm">{sem.label}</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteSemester(sem.key)}
+                        className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

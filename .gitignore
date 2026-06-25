@@ -30,3 +30,7 @@ server/node_modules/
 scratch/
 settings_dump.json
 server/dump_settings.js
+
+temp_extracted/
+
+temp_extracted/
