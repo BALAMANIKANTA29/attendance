@@ -4,9 +4,9 @@ const getApiUrl = () => {
   if (typeof window !== 'undefined') {
     const { hostname, protocol } = window.location;
     
-    // If running on Vercel, use local fallback
+    // If running on Vercel, use relative api route
     if (hostname.includes('vercel.app')) {
-      return 'http://localhost:3001/api';
+      return '/api';
     }
     
     // If accessed on localhost, relative '/api' goes through Vite proxy
