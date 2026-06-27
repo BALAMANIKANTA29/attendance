@@ -5,7 +5,7 @@ const getApiUrl = () => {
   if (typeof window !== 'undefined') {
     const { hostname, protocol } = window.location;
     if (hostname.includes('vercel.app')) {
-      return 'http://localhost:3001/api';
+      return '/api';
     }
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return '/api';
