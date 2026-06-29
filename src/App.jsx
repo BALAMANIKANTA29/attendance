@@ -30,6 +30,12 @@ const App = () => {
   const [currentStudentRoll, setCurrentStudentRoll] = useState(null);
   const [previewStudentRoll, setPreviewStudentRoll] = useState(null);
   const [currentView, setCurrentView] = useState('dailyMarking');
+  const [studentInfoFilters, setStudentInfoFilters] = useState(null);
+
+  const changeView = (view, filters = null) => {
+    setStudentInfoFilters(filters);
+    setCurrentView(view);
+  };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState({
     attendance: true,
@@ -423,7 +429,7 @@ const App = () => {
       <StudentDashboardView
         student={student}
         attendanceHistory={attendanceHistory}
-        onLogout={() => setCurrentView('studentInfo')}
+        onLogout={() => changeView('studentInfo')}
         isAdminPreview={true}
         onUpdateStudent={updateStudentInBothStates}
         courses={courses}
@@ -433,7 +439,7 @@ const App = () => {
     ) : (
       <div className="p-8 text-center text-red-500 font-bold font-['Times_New_Roman',_serif] min-h-screen bg-gray-50 flex flex-col items-center justify-center space-y-4">
         <div>Student record not found.</div>
-        <button onClick={() => setCurrentView('studentInfo')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all">
+        <button onClick={() => changeView('studentInfo')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all">
           Return to Student Info
         </button>
       </div>
@@ -446,7 +452,7 @@ const App = () => {
       <ParentDashboardView
         student={student}
         attendanceHistory={attendanceHistory}
-        onLogout={() => setCurrentView('studentInfo')}
+        onLogout={() => changeView('studentInfo')}
         isAdminPreview={true}
         onUpdateStudent={updateStudentInBothStates}
         courses={courses}
@@ -456,7 +462,7 @@ const App = () => {
     ) : (
       <div className="p-8 text-center text-red-500 font-bold font-['Times_New_Roman',_serif] min-h-screen bg-gray-50 flex flex-col items-center justify-center space-y-4">
         <div>Associated student record not found.</div>
-        <button onClick={() => setCurrentView('studentInfo')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all">
+        <button onClick={() => changeView('studentInfo')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all">
           Return to Student Info
         </button>
       </div>
@@ -492,7 +498,8 @@ const App = () => {
             semesters={semesters}
             userRole={userRole}
             adminUsername={adminUsername}
-            setCurrentView={setCurrentView}
+            setCurrentView={changeView}
+            changeView={changeView}
           />
         );
       case 'dailyMarking':
@@ -599,15 +606,16 @@ const App = () => {
             setStudentInfoData={setStudentInfoData}
             directAccess={directAccess}
             userRole={userRole}
-            onNavigateToClassMembers={() => setCurrentView('classMembers')}
+            onNavigateToClassMembers={() => changeView('classMembers')}
             onViewStudentDashboard={(roll) => {
               setPreviewStudentRoll(roll);
-              setCurrentView('studentDashboardPreview');
+              changeView('studentDashboardPreview');
             }}
             onViewParentDashboard={(roll) => {
               setPreviewStudentRoll(roll);
-              setCurrentView('parentDashboardPreview');
+              changeView('parentDashboardPreview');
             }}
+            filters={studentInfoFilters}
           />
         );
       case 'announcements':
@@ -729,7 +737,7 @@ const App = () => {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setCurrentView(item.id)}
+                  onClick={() => changeView(item.id)}
                   className={`w-full text-left flex items-center p-2.5 rounded-lg transition-colors duration-200
                     ${isActive
                       ? 'bg-indigo-600 text-white shadow-md'
@@ -804,7 +812,7 @@ const App = () => {
               <button
                 key={item.id}
                 onClick={() => {
-                  setCurrentView(item.id);
+                  changeView(item.id);
                   setMobileMenuOpen(false);
                 }}
                 className={`py-2 px-3 flex flex-col items-center text-xs font-medium rounded-lg transition-colors
@@ -827,7 +835,7 @@ const App = () => {
 
             {/* Dashboard pinned item */}
             <button
-              onClick={() => setCurrentView('dashboard')}
+              onClick={() => changeView('dashboard')}
               className={`w-full text-left flex items-center p-3 rounded-xl transition-colors duration-200 mb-2
                 ${currentView === 'dashboard'
                   ? 'bg-indigo-600 text-white shadow-md'
@@ -850,7 +858,7 @@ const App = () => {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setCurrentView(item.id)}
+                    onClick={() => changeView(item.id)}
                     className={`w-full text-left flex items-center p-3 rounded-xl transition-colors duration-200
                       ${isActive
                         ? 'bg-indigo-600 text-white shadow-md'
@@ -890,7 +898,7 @@ const App = () => {
         attendancePolicy={attendancePolicy}
         studentInfoData={studentInfoData}
         currentView={currentView}
-        setCurrentView={setCurrentView}
+        setCurrentView={changeView}
         semesters={semesters}
         courses={courses}
         setStudents={setStudents}

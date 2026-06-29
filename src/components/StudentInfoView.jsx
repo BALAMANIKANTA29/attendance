@@ -181,16 +181,44 @@ const EditStudentModal = ({ student, teams, onSave, onClose, directAccess }) => 
     );
 };
 
-export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData, directAccess, onViewStudentDashboard, onViewParentDashboard, userRole, onNavigateToClassMembers }) => {
+export const StudentInfoView = ({
+    studentInfoData: propData,
+    setStudentInfoData,
+    directAccess,
+    onViewStudentDashboard,
+    onViewParentDashboard,
+    userRole,
+    onNavigateToClassMembers,
+    filters,
+}) => {
     const data = propData || defaultData;
     const teams = useMemo(() => [...new Set(data.map(s => s.team))], [data]);
 
-    const [search, setSearch] = useState('');
-    const [teamFilter, setTeamFilter] = useState('all');
-    const [laptopFilter, setLaptopFilter] = useState('all');
-    const [projectFilter, setProjectFilter] = useState('all');
-    const [districtFilter, setDistrictFilter] = useState('all');
-    const [activeTab, setActiveTab] = useState('table');
+    const [search, setSearch] = useState(filters?.search || '');
+    const [teamFilter, setTeamFilter] = useState(filters?.teamFilter || 'all');
+    const [laptopFilter, setLaptopFilter] = useState(filters?.laptopFilter || 'all');
+    const [projectFilter, setProjectFilter] = useState(filters?.projectFilter || 'all');
+    const [districtFilter, setDistrictFilter] = useState(filters?.districtFilter || 'all');
+    const [activeTab, setActiveTab] = useState(filters?.activeTab || 'table');
+
+    React.useEffect(() => {
+        if (filters) {
+            setSearch(filters.search !== undefined ? filters.search : '');
+            setTeamFilter(filters.teamFilter !== undefined ? filters.teamFilter : 'all');
+            setLaptopFilter(filters.laptopFilter !== undefined ? filters.laptopFilter : 'all');
+            setProjectFilter(filters.projectFilter !== undefined ? filters.projectFilter : 'all');
+            setDistrictFilter(filters.districtFilter !== undefined ? filters.districtFilter : 'all');
+            setActiveTab(filters.activeTab !== undefined ? filters.activeTab : 'table');
+        } else {
+            setSearch('');
+            setTeamFilter('all');
+            setLaptopFilter('all');
+            setProjectFilter('all');
+            setDistrictFilter('all');
+            setActiveTab('table');
+        }
+    }, [filters]);
+
     const [editingStudent, setEditingStudent] = useState(null);
 
     const districts = useMemo(() => [...new Set(data.map(s => s.district).filter(Boolean))].sort(), [data]);
