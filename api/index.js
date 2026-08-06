@@ -31,6 +31,14 @@ try {
   console.log('Fallback data import failed.');
 }
 
+let mockClassStudents = [];
+try {
+  const mod = await import('../server/backlog_data.js');
+  mockClassStudents = mod.mockClassStudents;
+} catch (e) {
+  console.log('mockClassStudents import failed.');
+}
+
 const owners = ['k12aidha@example.com', 'bmk@example.com'];
 let students = {};
 let courses = {};
@@ -39,9 +47,40 @@ let attendanceHistory = {};
 let settings = {};
 
 owners.forEach(owner => {
-  students[owner] = defaultStudentInfoData.map(s => ({ ...s, id: s.roll }));
+  const courseSet = new Set();
+  
+  students[owner] = defaultStudentInfoData.map(s => {
+    const backlogInfo = mockClassStudents.find(m => m.id === s.roll);
+    const s11 = backlogInfo ? backlogInfo.s11 : '';
+    const s12 = backlogInfo ? backlogInfo.s12 : '';
+    const s21 = backlogInfo ? backlogInfo.s21 : '';
+    const s22 = backlogInfo ? backlogInfo.s22 : '';
+    const s31 = backlogInfo ? backlogInfo.s31 : '';
+    
+    const allSubs = [];
+    [s11, s12, s21, s22, s31].forEach(val => {
+      const subs = (val || '').split(',').map(x => x.trim().toUpperCase()).filter(Boolean);
+      subs.forEach(sub => {
+        allSubs.push(sub);
+        courseSet.add(sub);
+      });
+    });
+    
+    return {
+      ...s,
+      id: s.roll,
+      s11,
+      s12,
+      s21,
+      s22,
+      s31,
+      backlogs: allSubs.length,
+      backlogSubs: allSubs.join(',')
+    };
+  });
+  
   semesters[owner] = [...defaultSemesters];
-  courses[owner] = [];
+  courses[owner] = Array.from(courseSet).sort().map(sub => ({ code: sub, name: sub }));
   attendanceHistory[owner] = {};
   settings[owner] = {
     classInfo: { name: 'K12AIDHA', semester: 'Fall', academicYear: '' },

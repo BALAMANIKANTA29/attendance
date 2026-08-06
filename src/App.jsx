@@ -115,22 +115,37 @@ const App = () => {
   // Migration: merge ALL missing/empty fields from defaultStudentInfoData into cached localStorage records.
   // Also converts legacy `backlogSubs` field into per-semester `s31` field for dashboard display.
   React.useEffect(() => {
-    // Fields that are user-editable and should NEVER be overwritten by defaults
+    const existingInfoRolls = new Set((studentInfoDataState || []).map(s => (s.roll || s.id || '').toUpperCase()));
+    const missingInfo = defaultStudentInfoData.filter(d => !existingInfoRolls.has(d.roll.toUpperCase()));
+    
+    const existingStudentRolls = new Set((studentsState || []).map(s => (s.id || s.roll || '').toUpperCase()));
+    const missingStudents = defaultStudentInfoData.filter(d => !existingStudentRolls.has(d.roll.toUpperCase()));
+
+    if (missingStudents.length > 0) {
+      setStudentsState(prev => [
+        ...prev,
+        ...missingStudents.map(m => ({ id: m.roll, name: m.name, status: null }))
+      ]);
+    }
+
     const userEditableFields = new Set(['status', 'abcId', 'email', 'phone', 'project', 'club', 'laptop',
       'parentName', 'p1', 'p2', 's11', 's12', 's21', 's22', 's31', 'backlogs']);
-
     const semFields = ['s11', 's12', 's21', 's22', 's31'];
 
     let changed = false;
-    const migrated = studentInfoDataState.map(stored => {
+    let baseList = studentInfoDataState;
+    if (missingInfo.length > 0) {
+      baseList = [...studentInfoDataState, ...missingInfo];
+      changed = true;
+    }
+
+    const migrated = baseList.map(stored => {
       const defaults = defaultStudentInfoData.find(
         d => d.roll.toUpperCase() === (stored.roll || stored.id || '').toUpperCase()
       );
       if (!defaults) return stored;
 
       const patch = {};
-
-      // 1. Merge all non-editable missing fields (village, mandal, district, state, pincode, team, cls, room, name, roll etc.)
       Object.keys(defaults).forEach(field => {
         if (userEditableFields.has(field)) return;
         if (stored[field] === undefined || stored[field] === null || stored[field] === '') {
@@ -140,8 +155,6 @@ const App = () => {
         }
       });
 
-      // 2. If ALL semester backlog fields are empty AND default data has backlogSubs,
-      //    put all backlogs into s31 (current/most-recent semester) so dashboards show them.
       const allSemEmpty = semFields.every(k => !stored[k] || stored[k].trim() === '');
       if (allSemEmpty && defaults.backlogSubs && defaults.backlogSubs.trim() !== '') {
         patch.s31 = defaults.backlogSubs;
