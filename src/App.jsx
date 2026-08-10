@@ -193,6 +193,11 @@ const App = () => {
       if (!defaults) return stored;
 
       const patch = {};
+      if (stored.team !== defaults.team) patch.team = defaults.team;
+      if (stored.cls !== defaults.cls) patch.cls = defaults.cls;
+      if (stored.room !== defaults.room) patch.room = defaults.room;
+      if (stored.name !== defaults.name) patch.name = defaults.name;
+
       Object.keys(defaults).forEach(field => {
         if (stored[field] === undefined || stored[field] === null || stored[field] === '') {
           if (defaults[field] !== undefined && defaults[field] !== null && defaults[field] !== '') {
@@ -790,7 +795,7 @@ const App = () => {
             userRole={userRole}
             userEmail={userEmail}
             adminUsername={adminUsername}
-            teamStudents={studentInfoDataState}
+            teamStudents={studentInfoData}
             attendanceHistory={attendanceHistory}
             semesters={semesters}
             announcements={announcements}

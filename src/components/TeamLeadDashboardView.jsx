@@ -117,15 +117,27 @@ export const TeamLeadDashboardView = ({
     setEditingStudent(null);
   };
 
+  // Ensure effectiveStudents uses defaultStudentInfoData if teamStudents is empty, and syncs official team assignments
+  const effectiveStudents = useMemo(() => {
+    const list = (teamStudents && teamStudents.length > 0) ? teamStudents : defaultStudentInfoData;
+    return list.map(s => {
+      const def = defaultStudentInfoData.find(d => (d.roll || d.id || '').toUpperCase() === (s.roll || s.id || '').toUpperCase());
+      return {
+        ...s,
+        team: (s.team && s.team.trim() !== '') ? s.team : (def?.team || 'TEAM-1')
+      };
+    });
+  }, [teamStudents]);
+
   // Discover all teams available in teamStudents
   const availableTeams = useMemo(() => {
-    const tSet = new Set(teamStudents.map(s => s.team).filter(Boolean));
+    const tSet = new Set(effectiveStudents.map(s => s.team).filter(Boolean));
     return Array.from(tSet).sort((a, b) => {
       const numA = parseInt(a.replace(/\D/g, '')) || 0;
       const numB = parseInt(b.replace(/\D/g, '')) || 0;
       return numA - numB;
     });
-  }, [teamStudents]);
+  }, [effectiveStudents]);
 
   // Toggle team selection for multi-team filter
   const toggleTeam = (teamName) => {
@@ -146,16 +158,16 @@ export const TeamLeadDashboardView = ({
   // Active students based on multi-team filter selection
   const activeTeamStudents = useMemo(() => {
     if (!selectedTeams || selectedTeams.length === 0) {
-      return teamStudents;
+      return effectiveStudents;
     }
     const selectedNums = new Set(selectedTeams.map(t => t.match(/\d+/)?.[0]).filter(Boolean));
-    return teamStudents.filter(s => {
+    return effectiveStudents.filter(s => {
       if (!s.team) return false;
       const sNum = String(s.team).match(/\d+/)?.[0];
       if (sNum && selectedNums.has(sNum)) return true;
       return selectedTeams.some(st => (s.team || '').toUpperCase().replace(/[\s-]/g, '') === st.toUpperCase().replace(/[\s-]/g, ''));
     });
-  }, [teamStudents, selectedTeams]);
+  }, [effectiveStudents, selectedTeams]);
 
   // Display team label
   const currentDisplayTeam = useMemo(() => {
@@ -359,12 +371,12 @@ export const TeamLeadDashboardView = ({
                       }}
                       className="bg-amber-900/80 text-white font-extrabold text-xs px-3 py-1.5 rounded-xl border border-amber-400/40 focus:outline-none focus:ring-2 focus:ring-amber-300 cursor-pointer"
                     >
-                      <option value="ALL">🌟 All Teams ({teamStudents.length} Students)</option>
+                      <option value="ALL">🌟 All Teams ({effectiveStudents.length} Students)</option>
                       {selectedTeams.length > 1 && (
                         <option value="MULTI">⚡ Custom Multi-Select ({selectedTeams.length} Teams)</option>
                       )}
                       {availableTeams.map(t => {
-                        const count = teamStudents.filter(s => {
+                        const count = effectiveStudents.filter(s => {
                           const n = t.match(/\d+/)?.[0];
                           const sn = String(s.team).match(/\d+/)?.[0];
                           return n && sn ? n === sn : s.team === t;
@@ -493,11 +505,11 @@ export const TeamLeadDashboardView = ({
                   : 'bg-gray-100 text-gray-700 hover:bg-amber-50 hover:text-amber-700'
               }`}
             >
-              🌟 All Teams ({teamStudents.length})
+              🌟 All Teams ({effectiveStudents.length})
             </button>
 
             {availableTeams.map(t => {
-              const count = teamStudents.filter(s => {
+              const count = effectiveStudents.filter(s => {
                 const n = t.match(/\d+/)?.[0];
                 const sn = String(s.team).match(/\d+/)?.[0];
                 return n && sn ? n === sn : s.team === t;
