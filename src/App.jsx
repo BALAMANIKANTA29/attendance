@@ -305,6 +305,8 @@ const App = () => {
       return {
         ...defaults,
         ...s,
+        name: defaults.name || s.name,
+        team: defaults.team || s.team,
         village: (s.village && s.village.trim() !== '') ? s.village : (defaults.village || ''),
         mandal: (s.mandal && s.mandal.trim() !== '') ? s.mandal : (defaults.mandal || ''),
         district: (s.district && s.district.trim() !== '') ? s.district : (defaults.district || ''),
@@ -336,7 +338,14 @@ const App = () => {
       const teamRolls = new Set(studentInfoData.map(s => (s.roll || s.id || '').toUpperCase()));
       list = studentsState.filter(st => teamRolls.has((st.id || st.roll || '').toUpperCase()));
     }
-    return sortStudentsByTeamOrder(list);
+    const syncedList = list.map(st => {
+      const def = defaultStudentInfoData.find(d => d.roll.toUpperCase() === (st.id || st.roll || '').toUpperCase());
+      if (def) {
+        return { ...st, name: def.name };
+      }
+      return st;
+    });
+    return sortStudentsByTeamOrder(syncedList);
   }, [studentsState, userRole, userTeam, studentInfoData]);
 
   const teams = React.useMemo(() => {
