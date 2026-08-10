@@ -670,6 +670,7 @@ const App = () => {
             crtStudents={crtStudents}
             crtAttendanceHistory={crtAttendanceHistory}
             studentInfoData={studentInfoData}
+            teams={teams}
             classInfo={classInfo}
             attendancePolicy={attendancePolicy}
             semesters={semesters}

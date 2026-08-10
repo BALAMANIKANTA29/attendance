@@ -121,6 +121,7 @@ export const AdminDashboardView = ({
   crtStudents,
   crtAttendanceHistory,
   studentInfoData,
+  teams,
   classInfo,
   attendancePolicy,
   semesters,
@@ -129,6 +130,50 @@ export const AdminDashboardView = ({
   setCurrentView,
   changeView,
 }) => {
+
+  const teamStats = useMemo(() => {
+    const rawTeams = (teams && teams.length > 0)
+      ? teams
+      : Array.from(new Set((studentInfoData || []).map(s => s.team).filter(Boolean)));
+
+    const sortedTeams = Array.from(new Set(rawTeams)).sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
+
+    const tk = todayKey();
+    const todayReports = attendanceHistory?.[tk] || [];
+
+    return sortedTeams.map(tName => {
+      const teamSt = (studentInfoData || []).filter(s => s.team === tName);
+      const rollSet = new Set(teamSt.map(s => (s.roll || s.id || '').toUpperCase()));
+
+      let p = 0, tot = 0;
+      todayReports.forEach(r => {
+        (r.students || []).forEach(st => {
+          if (rollSet.has((st.id || st.roll || '').toUpperCase())) {
+            tot++;
+            if (st.status === 'P') p++;
+          }
+        });
+      });
+
+      const laptops = teamSt.filter(s => s.laptop === 'yes').length;
+      const backlogs = teamSt.reduce((sum, s) => sum + (Number(s.backlogs) || 0), 0);
+      const pct = tot > 0 ? Math.round((p / tot) * 100) : null;
+
+      return {
+        team: tName,
+        total: teamSt.length,
+        present: p,
+        totalMarked: tot,
+        pct,
+        laptops,
+        backlogs
+      };
+    });
+  }, [teams, studentInfoData, attendanceHistory]);
 
   const isSuperAdmin = userRole === 'admin';
 
@@ -437,6 +482,73 @@ export const AdminDashboardView = ({
               <p className="text-sm">Everything looks good!</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* ── Team-Wise Performance Overview (TEAM-1 to TEAM-12) ── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+          <div className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-indigo-600" />
+            <div>
+              <h2 className="font-bold text-gray-900 text-base">Class Admin — Team Wise Performance (TEAM-1 to TEAM-12)</h2>
+              <p className="text-xs text-gray-400">12 Teams · Arranged in canonical numerical order</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setCurrentView('teamLeadDashboard')}
+            className="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl border border-indigo-200 transition-all self-start sm:self-auto flex items-center gap-1 cursor-pointer"
+          >
+            Open Team Leaders Dashboard →
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {teamStats.map((t) => {
+            const teamNum = parseInt(t.team.replace(/\D/g, '')) || 1;
+            const colors = [
+              'border-indigo-200 bg-indigo-50/60 text-indigo-900',
+              'border-sky-200 bg-sky-50/60 text-sky-900',
+              'border-blue-200 bg-blue-50/60 text-blue-900',
+              'border-cyan-200 bg-cyan-50/60 text-cyan-900',
+              'border-teal-200 bg-teal-50/60 text-teal-900',
+              'border-emerald-200 bg-emerald-50/60 text-emerald-900',
+              'border-green-200 bg-green-50/60 text-green-900',
+              'border-lime-200 bg-lime-50/60 text-lime-900',
+              'border-amber-200 bg-amber-50/60 text-amber-900',
+              'border-orange-200 bg-orange-50/60 text-orange-900',
+              'border-rose-200 bg-rose-50/60 text-rose-900',
+              'border-pink-200 bg-pink-50/60 text-pink-900',
+            ];
+            const badgeStyle = colors[(teamNum - 1) % colors.length];
+
+            return (
+              <button
+                key={t.team}
+                onClick={() => setCurrentView('teamLeadDashboard')}
+                className={`p-3 rounded-2xl border text-left transition-all hover:scale-[1.03] hover:shadow-md cursor-pointer ${badgeStyle}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-xs uppercase tracking-wider">{t.team}</span>
+                  <span className="text-[10px] font-bold opacity-80">{t.total} Students</span>
+                </div>
+                <div className="mt-2 space-y-1 text-xs">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="opacity-75">Att. Today:</span>
+                    <span className="font-extrabold">{t.pct !== null ? `${t.pct}%` : 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="opacity-75">Laptops:</span>
+                    <span className="font-extrabold">{t.laptops}/{t.total}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="opacity-75">Backlogs:</span>
+                    <span className={`font-extrabold ${t.backlogs > 0 ? 'text-amber-800 font-black' : 'opacity-90'}`}>{t.backlogs}</span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 

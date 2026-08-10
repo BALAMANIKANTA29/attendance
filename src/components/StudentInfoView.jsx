@@ -193,7 +193,14 @@ export const StudentInfoView = ({
     filters,
 }) => {
     const data = propData || defaultData;
-    const teams = useMemo(() => [...new Set(data.map(s => s.team))], [data]);
+    const teams = useMemo(() => {
+        const set = new Set(data.map(s => s.team).filter(Boolean));
+        return Array.from(set).sort((a, b) => {
+            const numA = parseInt(a.replace(/\D/g, '')) || 0;
+            const numB = parseInt(b.replace(/\D/g, '')) || 0;
+            return numA - numB;
+        });
+    }, [data]);
 
     const [search, setSearch] = useState(filters?.search || '');
     const [teamFilter, setTeamFilter] = useState(filters?.teamFilter || 'all');
