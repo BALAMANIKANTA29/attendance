@@ -21,6 +21,32 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { studentInfoData as defaultStudentInfoData } from './data/studentInfoData';
 import { crtStudentData as defaultCrtStudentData } from './data/crtStudentData';
 
+export const sortStudentsByTeamOrder = (list) => {
+  if (!Array.isArray(list)) return [];
+  const defaultIndexMap = new Map();
+  defaultStudentInfoData.forEach((s, idx) => {
+    if (s.roll) defaultIndexMap.set(String(s.roll).toUpperCase(), idx);
+  });
+
+  return [...list].sort((a, b) => {
+    const rollA = String(a.roll || a.id || '').toUpperCase();
+    const rollB = String(b.roll || b.id || '').toUpperCase();
+
+    const idxA = defaultIndexMap.has(rollA) ? defaultIndexMap.get(rollA) : 999;
+    const idxB = defaultIndexMap.has(rollB) ? defaultIndexMap.get(rollB) : 999;
+
+    if (idxA !== idxB) {
+      return idxA - idxB;
+    }
+
+    const teamNumA = parseInt(String(a.team || '').replace(/\D/g, '')) || 99;
+    const teamNumB = parseInt(String(b.team || '').replace(/\D/g, '')) || 99;
+    if (teamNumA !== teamNumB) return teamNumA - teamNumB;
+
+    return rollA.localeCompare(rollB);
+  });
+};
+
 // Students will be loaded from the database via useLocalStorage sync
 
 const App = () => {
@@ -287,10 +313,12 @@ const App = () => {
       };
     });
 
+    const orderedList = sortStudentsByTeamOrder(sourceList);
+
     if (userRole === 'teamLead') {
       const target = userTeam || adminUsername || '';
       const numMatch = target.match(/\d+/)?.[0];
-      return sourceList.filter(s => {
+      return orderedList.filter(s => {
         if (!s.team) return false;
         if (numMatch) {
           const sNum = String(s.team).match(/\d+/)?.[0];
@@ -299,19 +327,25 @@ const App = () => {
         return (s.team || '').toUpperCase().replace(/[\s-]/g, '') === target.toUpperCase().replace(/[\s-]/g, '');
       });
     }
-    return sourceList;
+    return orderedList;
   }, [studentInfoDataState, userRole, userTeam, adminUsername]);
 
   const students = React.useMemo(() => {
+    let list = studentsState;
     if (userRole === 'teamLead' && userTeam) {
       const teamRolls = new Set(studentInfoData.map(s => (s.roll || s.id || '').toUpperCase()));
-      return studentsState.filter(st => teamRolls.has((st.id || st.roll || '').toUpperCase()));
+      list = studentsState.filter(st => teamRolls.has((st.id || st.roll || '').toUpperCase()));
     }
-    return studentsState;
+    return sortStudentsByTeamOrder(list);
   }, [studentsState, userRole, userTeam, studentInfoData]);
 
   const teams = React.useMemo(() => {
-    return Array.from(new Set(studentInfoDataState.map(s => s.team).filter(Boolean))).sort();
+    const tSet = new Set(studentInfoDataState.map(s => s.team).filter(Boolean));
+    return Array.from(tSet).sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.replace(/\D/g, '')) || 0;
+      return numA - numB;
+    });
   }, [studentInfoDataState]);
 
   const setStudents = (value) => {
@@ -546,7 +580,7 @@ const App = () => {
   }
 
   if (currentView === 'studentDashboardPreview') {
-    const student = studentInfoData.find(s => s.roll.toUpperCase() === (previewStudentRoll || '').toUpperCase());
+    const student = studentInfoData.find(s => s.roll.toUpperCase() === (previewStudentRoll || '').toUpperCase()) || studentInfoData[0];
     return student ? (
       <StudentDashboardView
         student={student}
@@ -557,6 +591,8 @@ const App = () => {
         courses={courses}
         semesters={semesters}
         announcements={announcements}
+        allStudents={studentInfoData}
+        onSelectStudentRoll={(roll) => setPreviewStudentRoll(roll)}
       />
     ) : (
       <div className="p-8 text-center text-red-500 font-bold font-['Times_New_Roman',_serif] min-h-screen bg-gray-50 flex flex-col items-center justify-center space-y-4">
@@ -569,7 +605,7 @@ const App = () => {
   }
 
   if (currentView === 'parentDashboardPreview') {
-    const student = studentInfoData.find(s => s.roll.toUpperCase() === (previewStudentRoll || '').toUpperCase());
+    const student = studentInfoData.find(s => s.roll.toUpperCase() === (previewStudentRoll || '').toUpperCase()) || studentInfoData[0];
     return student ? (
       <ParentDashboardView
         student={student}
@@ -580,6 +616,8 @@ const App = () => {
         courses={courses}
         semesters={semesters}
         announcements={announcements}
+        allStudents={studentInfoData}
+        onSelectStudentRoll={(roll) => setPreviewStudentRoll(roll)}
       />
     ) : (
       <div className="p-8 text-center text-red-500 font-bold font-['Times_New_Roman',_serif] min-h-screen bg-gray-50 flex flex-col items-center justify-center space-y-4">
@@ -593,7 +631,7 @@ const App = () => {
 
   const renderContent = () => {
     if (userRole === 'classAdmin') {
-      const restrictedViewsForClassAdmin = ['adminSettings', 'studentDashboardPreview', 'parentDashboardPreview'];
+      const restrictedViewsForClassAdmin = ['adminSettings'];
       if (restrictedViewsForClassAdmin.includes(currentView)) {
         return (
           <DailyMarkingView

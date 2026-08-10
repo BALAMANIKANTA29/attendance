@@ -120,12 +120,29 @@ export const TeamLeadDashboardView = ({
   // Ensure effectiveStudents uses defaultStudentInfoData if teamStudents is empty, and syncs official team assignments
   const effectiveStudents = useMemo(() => {
     const list = (teamStudents && teamStudents.length > 0) ? teamStudents : defaultStudentInfoData;
-    return list.map(s => {
+    const defaultIndexMap = new Map();
+    defaultStudentInfoData.forEach((s, idx) => {
+      if (s.roll) defaultIndexMap.set(String(s.roll).toUpperCase(), idx);
+    });
+
+    const mapped = list.map(s => {
       const def = defaultStudentInfoData.find(d => (d.roll || d.id || '').toUpperCase() === (s.roll || s.id || '').toUpperCase());
       return {
         ...s,
         team: (s.team && s.team.trim() !== '') ? s.team : (def?.team || 'TEAM-1')
       };
+    });
+
+    return mapped.sort((a, b) => {
+      const rollA = String(a.roll || a.id || '').toUpperCase();
+      const rollB = String(b.roll || b.id || '').toUpperCase();
+      const idxA = defaultIndexMap.has(rollA) ? defaultIndexMap.get(rollA) : 999;
+      const idxB = defaultIndexMap.has(rollB) ? defaultIndexMap.get(rollB) : 999;
+      if (idxA !== idxB) return idxA - idxB;
+      const teamNumA = parseInt(String(a.team || '').replace(/\D/g, '')) || 99;
+      const teamNumB = parseInt(String(b.team || '').replace(/\D/g, '')) || 99;
+      if (teamNumA !== teamNumB) return teamNumA - teamNumB;
+      return rollA.localeCompare(rollB);
     });
   }, [teamStudents]);
 

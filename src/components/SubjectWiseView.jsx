@@ -185,7 +185,6 @@ const StudentListModal = ({ subject, students, setStudents, semesters, onClose, 
                                     <option value="">-- Choose Student --</option>
                                     {students
                                         .filter(s => !failedStudents.some(fs => fs.id === s.id))
-                                        .sort((a,b) => a.name.localeCompare(b.name))
                                         .map(s => (
                                             <option key={s.id} value={s.id}>{s.name} ({s.id})</option>
                                         ))}
@@ -446,7 +445,7 @@ export const SubjectWiseView = ({ students, setStudents, semesters: propSemester
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
                             >
                                 <option value="">-- Select Student --</option>
-                                {students.sort((a,b) => a.name.localeCompare(b.name)).map(s => (
+                                {students.map(s => (
                                     <option key={s.id} value={s.id}>{s.name} ({s.id})</option>
                                 ))}
                             </select>

@@ -41,7 +41,7 @@ const PhoneLink = ({ number, fallback = "Not Recorded" }) => {
   );
 };
 
-export const ParentDashboardView = ({ student, attendanceHistory = {}, onLogout, isAdminPreview = false, onUpdateStudent, courses = [], semesters = [], announcements = [] }) => {
+export const ParentDashboardView = ({ student, attendanceHistory = {}, onLogout, isAdminPreview = false, onUpdateStudent, courses = [], semesters = [], announcements = [], allStudents = [], onSelectStudentRoll }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({});
 
@@ -198,9 +198,26 @@ export const ParentDashboardView = ({ student, attendanceHistory = {}, onLogout,
           </div>
           <div>
             <h1 className="text-xl font-bold text-indigo-600">Parent Portal</h1>
-            <p className="text-[10px] text-gray-400 font-mono">Academic Track Record</p>
+            <p className="text-[10px] text-gray-400 font-mono">Academic Track Record • {student?.team}</p>
           </div>
         </div>
+
+        {isAdminPreview && allStudents && allStudents.length > 0 && (
+          <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl">
+            <span className="text-xs font-bold text-indigo-800">Switch Student:</span>
+            <select
+              value={student?.roll}
+              onChange={(e) => onSelectStudentRoll && onSelectStudentRoll(e.target.value)}
+              className="bg-white text-indigo-900 font-extrabold text-xs px-2.5 py-1 rounded-lg border border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            >
+              {allStudents.map(s => (
+                <option key={s.roll} value={s.roll}>
+                  [{s.team}] {s.name} ({s.roll})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           {isAdminPreview && (
             isEditMode ? (
