@@ -39,7 +39,7 @@ try {
   console.log('mockClassStudents import failed.');
 }
 
-const owners = ['k12aidha@example.com', 'bmk@example.com'];
+const owners = ['k12aidha@example.com', '20056@example.com', 'bmk@example.com'];
 let students = {};
 let courses = {};
 let semesters = {};
@@ -139,7 +139,7 @@ const getContextInfo = (req) => {
   return {
     isStudent: false,
     userEmail: userEmail,
-    ownerEmail: userEmail || 'k12aidha@example.com',
+    ownerEmail: (userEmail && students[userEmail] && students[userEmail].length > 0) ? userEmail : 'k12aidha@example.com',
     studentRoll: null,
     studentName: null,
     studentTeam: null
@@ -203,7 +203,7 @@ app.post('/api/auth/login', (req, res) => {
 
   // 2. Class Admin (20056 / 20056)
   if ((id === '20056' || id.toUpperCase() === 'K12AIDHA') && (pass === '20056' || pass === 'k12AIDHA')) {
-    return res.json({ success: true, role: 'classAdmin', email: '20056@example.com', name: 'Class Admin' });
+    return res.json({ success: true, role: 'classAdmin', email: 'k12aidha@example.com', name: 'Class Admin' });
   }
 
   // Team Leaders (AIDHT1 to AIDHT12)

@@ -119,7 +119,7 @@ app.post('/api/auth/login', (req, res) => {
 
   // 2. Class Admin (20056 / 20056)
   if ((id === '20056' || id.toUpperCase() === 'K12AIDHA') && (pass === '20056' || pass === 'k12AIDHA')) {
-    return res.json({ success: true, role: 'classAdmin', email: '20056@example.com', name: 'Class Admin' });
+    return res.json({ success: true, role: 'classAdmin', email: 'k12aidha@example.com', name: 'Class Admin' });
   }
 
   // 2.5 Team Leaders (AIDHT1 to AIDHT12)
