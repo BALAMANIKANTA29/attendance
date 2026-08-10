@@ -1,20 +1,39 @@
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
+dotenv.config();
+
+import {
+  isSupabaseConfigured,
+  supabase,
+  fetchSupabaseStudents,
+  upsertSupabaseStudents,
+  insertSupabaseAttendance,
+  fetchSupabaseAttendance,
+  deleteSupabaseAttendance,
+  fetchSupabaseSettings,
+  upsertSupabaseSettings,
+  fetchSupabaseCourses,
+  upsertSupabaseCourse,
+  deleteSupabaseCourse,
+  fetchSupabaseSemesters,
+  upsertSupabaseSemester,
+  deleteSupabaseSemester
+} from '../src/lib/supabase.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json({ strict: false }));
 
-// Try to import the SQLite DB — will fail gracefully on Vercel
+// Try to import local SQLite DB — will fail gracefully on serverless/Vercel
 let db = null;
 try {
   const mod = await import('../server/db.js');
   db = mod.default;
 } catch (e) {
-  console.log('SQLite not available, using in-memory store.');
+  console.log('SQLite not available, using cloud/in-memory store.');
 }
 
-// In-memory fallback store structure partitioned by ownerEmail
 const defaultSemesters = [
   { key: 's11', label: '1-1' },
   { key: 's12', label: '1-2' },
@@ -89,7 +108,7 @@ owners.forEach(owner => {
   };
 });
 
-const getContextInfo = (req) => {
+const getContextInfo = async (req) => {
   const userEmail = req.headers['x-user-email'] || '';
   const userTeam = req.headers['x-user-team'] || '';
 
@@ -107,7 +126,30 @@ const getContextInfo = (req) => {
       studentTeam: userTeam || (num ? `TEAM-${num}` : '')
     };
   }
-  
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data } = await supabase
+        .from('students')
+        .select('owner_email, roll, name, team')
+        .ilike('email', userEmail)
+        .limit(1);
+      if (data && data.length > 0) {
+        const student = data[0];
+        return {
+          isStudent: true,
+          userEmail: userEmail,
+          ownerEmail: student.owner_email,
+          studentRoll: student.roll,
+          studentName: student.name,
+          studentTeam: student.team
+        };
+      }
+    } catch (e) {
+      console.error('[Supabase] Context info error:', e);
+    }
+  }
+
   if (db) {
     const student = db.prepare('SELECT owner_email, roll, name, team FROM students WHERE LOWER(email) = LOWER(?) LIMIT 1').get(userEmail);
     if (student) {
@@ -188,7 +230,7 @@ const getBacklogsGroupedByStudent = (studentsList, ownerEmail) => {
 };
 
 // --- Authentication ---
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { credential, password } = req.body;
   if (!credential || !password) {
     return res.status(400).json({ error: 'Credential and password are required' });
@@ -201,12 +243,10 @@ app.post('/api/auth/login', (req, res) => {
     return res.json({ success: true, role: 'admin', email: 'bmk@example.com', name: 'Super Admin' });
   }
 
-  // 2. Class Admin (20056 / 20056)
   if ((id === '20056' || id.toUpperCase() === 'K12AIDHA') && (pass === '20056' || pass === 'k12AIDHA')) {
     return res.json({ success: true, role: 'classAdmin', email: 'k12aidha@example.com', name: 'Class Admin' });
   }
 
-  // Team Leaders (AIDHT1 to AIDHT12)
   const teamMatch = id.toUpperCase().match(/^AIDHT([1-9]|1[0-2])$/);
   if (teamMatch) {
     const teamNum = teamMatch[1];
@@ -224,6 +264,27 @@ app.post('/api/auth/login', (req, res) => {
 
   const idClean = id.toLowerCase();
   const passClean = pass.toLowerCase();
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data } = await supabase
+        .from('students')
+        .select('*')
+        .or(`roll.ilike.${idClean},email.ilike.${idClean}`)
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const s = data[0];
+        const matchRoll = (s.roll || '').toLowerCase();
+        const matchEmail = (s.email || '').toLowerCase();
+        if (passClean === matchRoll || passClean === matchEmail) {
+          return res.json({ success: true, role: 'student', email: s.email, roll: s.roll, name: s.name });
+        }
+      }
+    } catch (e) {
+      console.error('[Supabase] Login error:', e);
+    }
+  }
 
   if (db) {
     const student = db.prepare('SELECT * FROM students WHERE LOWER(roll) = ? OR LOWER(email) = ? LIMIT 1').get(idClean, idClean);
@@ -250,6 +311,24 @@ app.post('/api/auth/login', (req, res) => {
   const cleanId = id.replace(/[\s-]/g, '');
   const cleanPass = pass.replace(/[\s-]/g, '');
   if (cleanId === cleanPass && cleanId.length >= 10) {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data } = await supabase.from('students').select('*');
+        if (data) {
+          const parentMatch = data.find(s => {
+            const p1 = (s.p1 || '').replace(/[\s-]/g, '');
+            const p2 = (s.p2 || '').replace(/[\s-]/g, '');
+            return (p1 && p1 === cleanId) || (p2 && p2 === cleanId);
+          });
+          if (parentMatch) {
+            return res.json({ success: true, role: 'parent', email: parentMatch.email, roll: parentMatch.roll, name: parentMatch.name });
+          }
+        }
+      } catch (e) {
+        console.error('[Supabase] Parent login error:', e);
+      }
+    }
+
     if (db) {
       const parentMatch = db.prepare("SELECT * FROM students WHERE REPLACE(REPLACE(p1, ' ', ''), '-', '') = ? OR REPLACE(REPLACE(p2, ' ', ''), '-', '') = ? LIMIT 1").get(cleanId, cleanId);
       if (parentMatch) {
@@ -274,11 +353,30 @@ app.post('/api/auth/login', (req, res) => {
 
 // --- Students ---
 
-app.get('/api/students', (req, res) => {
+app.get('/api/students', async (req, res) => {
   try {
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
     const userRole = req.headers['x-user-role'] || '';
     const userTeam = req.headers['x-user-team'] || '';
+
+    if (isSupabaseConfigured) {
+      const supabaseData = await fetchSupabaseStudents(context.ownerEmail);
+      if (supabaseData) {
+        let list = supabaseData.map(s => ({
+          ...s,
+          id: s.roll,
+          parentName: s.parent_name || s.parentName || '',
+          backlogSubs: s.backlog_subs || s.backlogSubs || '',
+          abcId: s.abc_id || s.abcId || ''
+        }));
+        if (userRole === 'teamLead' && userTeam) {
+          list = list.filter(s => (s.team || '').toUpperCase() === userTeam.toUpperCase());
+        } else if (context.isStudent) {
+          list = list.filter(s => (s.email || '').toLowerCase() === context.userEmail.toLowerCase());
+        }
+        return res.json(list);
+      }
+    }
 
     if (db) {
       let rows;
@@ -304,14 +402,26 @@ app.get('/api/students', (req, res) => {
   }
 });
 
-app.put('/api/students/:roll', (req, res) => {
+app.put('/api/students/:roll', async (req, res) => {
   try {
     const { roll } = req.params;
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
     const data = req.body;
 
     if (context.isStudent && roll.toLowerCase() !== context.studentRoll.toLowerCase()) {
       return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (isSupabaseConfigured) {
+      const currentList = (await fetchSupabaseStudents(context.ownerEmail)) || [];
+      const updatedList = currentList.map(s => {
+        if ((s.roll || s.id || '').toUpperCase() === roll.toUpperCase()) {
+          return { ...s, ...data };
+        }
+        return s;
+      });
+      const ok = await upsertSupabaseStudents(context.ownerEmail, updatedList);
+      if (ok) return res.json({ success: true });
     }
 
     if (db) {
@@ -320,10 +430,9 @@ app.put('/api/students/:roll', (req, res) => {
 
       db.transaction(() => {
         db.prepare('DELETE FROM student_backlogs WHERE owner_email = ? AND roll = ?').run(context.ownerEmail, roll);
-        
-        const allSubs = [];
         const insertBacklog = db.prepare('INSERT OR REPLACE INTO student_backlogs (owner_email, roll, course_code, semester_key) VALUES (?, ?, ?, ?)');
-        
+        const allSubs = [];
+
         for (const semKey of sems) {
           if (data[semKey] !== undefined) {
             const val = String(data[semKey] || '').trim();
@@ -375,14 +484,20 @@ app.put('/api/students/:roll', (req, res) => {
   }
 });
 
-app.post('/api/students/bulk', (req, res) => {
+app.post('/api/students/bulk', async (req, res) => {
   try {
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
     if (context.isStudent) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
     const payload = req.body;
+
+    if (isSupabaseConfigured) {
+      const ok = await upsertSupabaseStudents(context.ownerEmail, payload);
+      if (ok) return res.json({ success: true });
+    }
+
     if (db) {
       let sems = db.prepare('SELECT key FROM semesters WHERE owner_email = ?').all(context.ownerEmail).map(s => s.key);
       if (sems.length === 0) sems = ['s11', 's12', 's21', 's22', 's31'];
@@ -451,19 +566,28 @@ app.post('/api/students/bulk', (req, res) => {
 
 // --- Courses ---
 
-app.get('/api/courses', (req, res) => {
+app.get('/api/courses', async (req, res) => {
   try {
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
+    if (isSupabaseConfigured) {
+      const data = await fetchSupabaseCourses(context.ownerEmail);
+      if (data) return res.json(data);
+    }
     if (db) return res.json(db.prepare('SELECT * FROM courses WHERE owner_email = ? ORDER BY code').all(context.ownerEmail));
     res.json(courses[context.ownerEmail] || []);
   } catch (e) { res.json([]); }
 });
 
-app.post('/api/courses', (req, res) => {
+app.post('/api/courses', async (req, res) => {
   try {
     const { code, name } = req.body;
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
     if (context.isStudent) return res.status(403).json({ error: 'Forbidden' });
+
+    if (isSupabaseConfigured) {
+      const ok = await upsertSupabaseCourse(context.ownerEmail, code.trim().toUpperCase(), (name || code).trim());
+      if (ok) return res.json({ success: true });
+    }
 
     if (db) {
       db.prepare('INSERT OR REPLACE INTO courses (owner_email, code, name) VALUES (?, ?, ?)')
@@ -477,11 +601,16 @@ app.post('/api/courses', (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/courses/:code', (req, res) => {
+app.delete('/api/courses/:code', async (req, res) => {
   try {
     const { code } = req.params;
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
     if (context.isStudent) return res.status(403).json({ error: 'Forbidden' });
+
+    if (isSupabaseConfigured) {
+      const ok = await deleteSupabaseCourse(context.ownerEmail, code.toUpperCase());
+      if (ok) return res.json({ success: true });
+    }
 
     if (db) {
       db.prepare('DELETE FROM courses WHERE owner_email = ? AND code = ?').run(context.ownerEmail, code.toUpperCase());
@@ -496,19 +625,28 @@ app.delete('/api/courses/:code', (req, res) => {
 
 // --- Semesters ---
 
-app.get('/api/semesters', (req, res) => {
+app.get('/api/semesters', async (req, res) => {
   try {
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
+    if (isSupabaseConfigured) {
+      const data = await fetchSupabaseSemesters(context.ownerEmail);
+      if (data) return res.json(data);
+    }
     if (db) return res.json(db.prepare('SELECT * FROM semesters WHERE owner_email = ? ORDER BY key').all(context.ownerEmail));
     res.json(semesters[context.ownerEmail] || []);
   } catch (e) { res.json([]); }
 });
 
-app.post('/api/semesters', (req, res) => {
+app.post('/api/semesters', async (req, res) => {
   try {
     const { key, label } = req.body;
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
     if (context.isStudent) return res.status(403).json({ error: 'Forbidden' });
+
+    if (isSupabaseConfigured) {
+      const ok = await upsertSupabaseSemester(context.ownerEmail, key.trim(), label.trim());
+      if (ok) return res.json({ success: true });
+    }
 
     if (db) {
       db.prepare('INSERT OR REPLACE INTO semesters (owner_email, key, label) VALUES (?, ?, ?)').run(context.ownerEmail, key.trim(), label.trim());
@@ -521,11 +659,16 @@ app.post('/api/semesters', (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/semesters/:key', (req, res) => {
+app.delete('/api/semesters/:key', async (req, res) => {
   try {
     const { key } = req.params;
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
     if (context.isStudent) return res.status(403).json({ error: 'Forbidden' });
+
+    if (isSupabaseConfigured) {
+      const ok = await deleteSupabaseSemester(context.ownerEmail, key);
+      if (ok) return res.json({ success: true });
+    }
 
     if (db) {
       db.prepare('DELETE FROM semesters WHERE owner_email = ? AND key = ?').run(context.ownerEmail, key);
@@ -540,12 +683,22 @@ app.delete('/api/semesters/:key', (req, res) => {
 
 // --- Attendance ---
 
-app.get('/api/attendance', (req, res) => {
+app.get('/api/attendance', async (req, res) => {
   try {
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
     let hist = {};
 
-    if (db) {
+    if (isSupabaseConfigured) {
+      const supabaseData = await fetchSupabaseAttendance(context.ownerEmail);
+      if (supabaseData) {
+        hist = supabaseData.reduce((acc, row) => {
+          const report = typeof row.report_data === 'string' ? JSON.parse(row.report_data) : row.report_data;
+          if (!acc[row.date]) acc[row.date] = [];
+          acc[row.date].push(report);
+          return acc;
+        }, {});
+      }
+    } else if (db) {
       const rows = db.prepare('SELECT * FROM attendance_history WHERE owner_email = ?').all(context.ownerEmail);
       hist = rows.reduce((acc, row) => {
         const report = JSON.parse(row.report_data);
@@ -580,13 +733,18 @@ app.get('/api/attendance', (req, res) => {
   } catch (e) { res.json({}); }
 });
 
-app.post('/api/attendance', (req, res) => {
+app.post('/api/attendance', async (req, res) => {
   try {
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
     if (context.isStudent) return res.status(403).json({ error: 'Forbidden' });
 
     const reportData = req.body;
     const date = reportData.date;
+
+    if (isSupabaseConfigured) {
+      const ok = await insertSupabaseAttendance(context.ownerEmail, date, reportData);
+      if (ok) return res.json({ success: true });
+    }
 
     if (db) {
       db.prepare('INSERT INTO attendance_history (owner_email, date, report_data) VALUES (?, ?, ?)').run(context.ownerEmail, date, JSON.stringify(reportData));
@@ -599,10 +757,15 @@ app.post('/api/attendance', (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/attendance', (req, res) => {
+app.delete('/api/attendance', async (req, res) => {
   try {
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
     if (context.isStudent) return res.status(403).json({ error: 'Forbidden' });
+
+    if (isSupabaseConfigured) {
+      const ok = await deleteSupabaseAttendance(context.ownerEmail);
+      if (ok) return res.json({ success: true });
+    }
 
     if (db) {
       db.prepare('DELETE FROM attendance_history WHERE owner_email = ?').run(context.ownerEmail);
@@ -615,38 +778,50 @@ app.delete('/api/attendance', (req, res) => {
 
 // --- Settings ---
 
-app.get('/api/settings/:key', (req, res) => {
+app.get('/api/settings/:key', async (req, res) => {
   try {
     const { key } = req.params;
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
 
     if (key === 'students' || key === 'studentInfoData') {
-      let rows;
-      if (db) {
+      let rows = null;
+      if (isSupabaseConfigured) {
+        rows = await fetchSupabaseStudents(context.ownerEmail);
+      }
+      if (!rows && db) {
         if (context.isStudent) {
           rows = db.prepare('SELECT * FROM students WHERE owner_email = ? AND LOWER(email) = LOWER(?)').all(context.ownerEmail, context.userEmail);
         } else {
           rows = db.prepare('SELECT * FROM students WHERE owner_email = ?').all(context.ownerEmail);
         }
         rows = getBacklogsGroupedByStudent(rows, context.ownerEmail);
-      } else {
+      } else if (!rows) {
         rows = students[context.ownerEmail] || [];
         if (context.isStudent) {
           rows = rows.filter(s => (s.email || '').toLowerCase() === context.userEmail.toLowerCase());
         }
       }
 
-      if (key === 'students') {
-        return res.json(rows.map(s => ({ ...s, id: s.roll })));
-      }
-      return res.json(rows);
+      const formatted = (rows || []).map(s => ({
+        ...s,
+        parentName: s.parent_name || s.parentName || '',
+        backlogSubs: s.backlog_subs || s.backlogSubs || '',
+        abcId: s.abc_id || s.abcId || '',
+        id: s.roll || s.id,
+        roll: s.roll || s.id
+      }));
+
+      return res.json(formatted);
     }
 
     let data = null;
-    if (db) {
+    if (isSupabaseConfigured) {
+      data = await fetchSupabaseSettings(context.ownerEmail, key);
+    }
+    if (data === null && db) {
       const row = db.prepare('SELECT value FROM settings WHERE owner_email = ? AND key = ?').get(context.ownerEmail, key);
       data = row ? JSON.parse(row.value) : null;
-    } else {
+    } else if (data === null) {
       data = (settings[context.ownerEmail] || {})[key] ?? null;
     }
 
@@ -682,10 +857,10 @@ app.get('/api/settings/:key', (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/settings/:key', (req, res) => {
+app.post('/api/settings/:key', async (req, res) => {
   try {
     const { key } = req.params;
-    const context = getContextInfo(req);
+    const context = await getContextInfo(req);
 
     if (context.isStudent) {
       if (key === 'students' || key === 'studentInfoData') {
@@ -693,6 +868,18 @@ app.post('/api/settings/:key', (req, res) => {
         if (!Array.isArray(list)) return res.status(400).json({ error: 'Payload must be an array' });
         const invalid = list.some(s => (s.roll || s.id || '').toLowerCase() !== context.studentRoll.toLowerCase());
         if (invalid) return res.status(403).json({ error: 'Forbidden' });
+
+        if (isSupabaseConfigured) {
+          const currentList = (await fetchSupabaseStudents(context.ownerEmail)) || [];
+          const updatedList = currentList.map(s => {
+            if ((s.roll || s.id || '').toUpperCase() === context.studentRoll.toUpperCase()) {
+              return { ...s, ...list[0] };
+            }
+            return s;
+          });
+          const ok = await upsertSupabaseStudents(context.ownerEmail, updatedList);
+          if (ok) return res.json({ success: true });
+        }
 
         if (db) {
           const s = list[0];
@@ -746,7 +933,12 @@ app.post('/api/settings/:key', (req, res) => {
     }
 
     if (key === 'students' || key === 'studentInfoData') {
-      return res.json({ success: true }); // Handled by bulk endpoint or other calls
+      return res.json({ success: true });
+    }
+
+    if (isSupabaseConfigured) {
+      const ok = await upsertSupabaseSettings(context.ownerEmail, key, req.body);
+      if (ok) return res.json({ success: true });
     }
 
     if (db) {

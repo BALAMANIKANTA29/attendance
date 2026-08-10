@@ -305,6 +305,13 @@ const App = () => {
       return {
         ...defaults,
         ...s,
+        s11: (s.s11 && String(s.s11).trim() !== '') ? s.s11 : (defaults.s11 || ''),
+        s12: (s.s12 && String(s.s12).trim() !== '') ? s.s12 : (defaults.s12 || ''),
+        s21: (s.s21 && String(s.s21).trim() !== '') ? s.s21 : (defaults.s21 || ''),
+        s22: (s.s22 && String(s.s22).trim() !== '') ? s.s22 : (defaults.s22 || ''),
+        s31: (s.s31 && String(s.s31).trim() !== '') ? s.s31 : (defaults.s31 || ''),
+        backlogs: (s.backlogs !== undefined && s.backlogs !== null && Number(s.backlogs) > 0) ? Number(s.backlogs) : (defaults.backlogs || 0),
+        backlogSubs: (s.backlogSubs && String(s.backlogSubs).trim() !== '') ? s.backlogSubs : (defaults.backlogSubs || ''),
         name: defaults.name || s.name,
         team: defaults.team || s.team,
         village: (s.village && s.village.trim() !== '') ? s.village : (defaults.village || ''),
@@ -763,8 +770,8 @@ const App = () => {
       case 'backlogs':
         return (
           <BacklogsView
-            students={students}
-            setStudents={setStudents}
+            students={studentInfoData}
+            setStudents={setStudentInfoDataState}
             semesters={semesters}
             setSemesters={setSemesters}
             directAccess={directAccess && userRole !== 'teamLead'}
@@ -775,8 +782,8 @@ const App = () => {
       case 'subjectWise':
         return (
           <SubjectWiseView
-            students={students}
-            setStudents={setStudents}
+            students={studentInfoData}
+            setStudents={setStudentInfoDataState}
             semesters={semesters}
             setSemesters={setSemesters}
             directAccess={directAccess && userRole !== 'teamLead'}

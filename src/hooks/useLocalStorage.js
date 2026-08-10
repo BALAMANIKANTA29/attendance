@@ -71,11 +71,16 @@ export const useLocalStorage = (key, initialValue, userEmail) => {
         
         const dbValue = await res.json();
         
-        // If DB has data, prefer it over LocalStorage
-        if (dbValue !== null && JSON.stringify(dbValue) !== JSON.stringify(storedValue)) {
-          setStoredValue(dbValue);
-          const storageKey = userEmail ? `${userEmail}:${key}` : key;
-          window.localStorage.setItem(storageKey, JSON.stringify(dbValue));
+        if (dbValue !== null && dbValue !== undefined) {
+          if (Array.isArray(dbValue) && dbValue.length === 0) {
+            // keep stored value if DB returns empty array
+          } else {
+            setStoredValue(dbValue);
+            const storageKey = userEmail ? `${userEmail}:${key}` : key;
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem(storageKey, JSON.stringify(dbValue));
+            }
+          }
         }
       } catch (err) {
         console.warn(`Database sync failed for ${key}, falling back to local:`, err);

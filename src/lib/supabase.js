@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Read credentials from environment variables or process.env fallback
-const supabaseUrl = import.meta?.env?.VITE_SUPABASE_URL || process.env?.VITE_SUPABASE_URL || process.env?.SUPABASE_URL || '';
-const supabaseAnonKey = import.meta?.env?.VITE_SUPABASE_ANON_KEY || process.env?.VITE_SUPABASE_ANON_KEY || process.env?.SUPABASE_ANON_KEY || '';
+const supabaseUrl = (typeof process !== 'undefined' && process.env?.SUPABASE_URL) || (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) || (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_URL) || '';
+const supabaseAnonKey = (typeof process !== 'undefined' && process.env?.SUPABASE_SERVICE_ROLE_KEY) || (typeof process !== 'undefined' && process.env?.SUPABASE_ANON_KEY) || (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) || (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_ANON_KEY) || '';
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http'));
 
@@ -25,7 +27,14 @@ export async function fetchSupabaseStudents(ownerEmail) {
       console.error('[Supabase] Error fetching students:', error.message);
       return null;
     }
-    return data;
+    return (data || []).map(s => ({
+      ...s,
+      parentName: s.parent_name || s.parentName || '',
+      backlogSubs: s.backlog_subs || s.backlogSubs || '',
+      abcId: s.abc_id || s.abcId || '',
+      id: s.roll,
+      roll: s.roll
+    }));
   } catch (err) {
     console.error('[Supabase] Fetch error:', err);
     return null;
@@ -131,5 +140,206 @@ export async function fetchSupabaseAttendance(ownerEmail) {
   } catch (err) {
     console.error('[Supabase] Attendance fetch exception:', err);
     return null;
+  }
+}
+
+/**
+ * Clear attendance history from Supabase
+ */
+export async function deleteSupabaseAttendance(ownerEmail) {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase
+      .from('attendance_history')
+      .delete()
+      .eq('owner_email', ownerEmail);
+
+    if (error) {
+      console.error('[Supabase] Delete attendance error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[Supabase] Attendance delete exception:', err);
+    return false;
+  }
+}
+
+/**
+ * Fetch settings from Supabase
+ */
+export async function fetchSupabaseSettings(ownerEmail, key) {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('owner_email', ownerEmail)
+      .eq('key', key)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[Supabase] Fetch settings error:', error.message);
+      return null;
+    }
+    return data ? data.value : null;
+  } catch (err) {
+    console.error('[Supabase] Settings exception:', err);
+    return null;
+  }
+}
+
+/**
+ * Upsert setting into Supabase
+ */
+export async function upsertSupabaseSettings(ownerEmail, key, value) {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase
+      .from('settings')
+      .upsert([{ owner_email: ownerEmail, key, value }], { onConflict: 'owner_email,key' });
+
+    if (error) {
+      console.error('[Supabase] Upsert setting error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[Supabase] Setting upsert exception:', err);
+    return false;
+  }
+}
+
+/**
+ * Fetch courses from Supabase
+ */
+export async function fetchSupabaseCourses(ownerEmail) {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('owner_email', ownerEmail)
+      .order('code', { ascending: true });
+
+    if (error) {
+      console.error('[Supabase] Fetch courses error:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.error('[Supabase] Courses exception:', err);
+    return null;
+  }
+}
+
+/**
+ * Upsert course in Supabase
+ */
+export async function upsertSupabaseCourse(ownerEmail, code, name) {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase
+      .from('courses')
+      .upsert([{ owner_email: ownerEmail, code, name }], { onConflict: 'owner_email,code' });
+
+    if (error) {
+      console.error('[Supabase] Upsert course error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[Supabase] Course upsert exception:', err);
+    return false;
+  }
+}
+
+/**
+ * Delete course from Supabase
+ */
+export async function deleteSupabaseCourse(ownerEmail, code) {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase
+      .from('courses')
+      .delete()
+      .eq('owner_email', ownerEmail)
+      .eq('code', code);
+
+    if (error) {
+      console.error('[Supabase] Delete course error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[Supabase] Course delete exception:', err);
+    return false;
+  }
+}
+
+/**
+ * Fetch semesters from Supabase
+ */
+export async function fetchSupabaseSemesters(ownerEmail) {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('semesters')
+      .select('*')
+      .eq('owner_email', ownerEmail)
+      .order('key', { ascending: true });
+
+    if (error) {
+      console.error('[Supabase] Fetch semesters error:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.error('[Supabase] Semesters exception:', err);
+    return null;
+  }
+}
+
+/**
+ * Upsert semester in Supabase
+ */
+export async function upsertSupabaseSemester(ownerEmail, key, label) {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase
+      .from('semesters')
+      .upsert([{ owner_email: ownerEmail, key, label }], { onConflict: 'owner_email,key' });
+
+    if (error) {
+      console.error('[Supabase] Upsert semester error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[Supabase] Semester upsert exception:', err);
+    return false;
+  }
+}
+
+/**
+ * Delete semester from Supabase
+ */
+export async function deleteSupabaseSemester(ownerEmail, key) {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase
+      .from('semesters')
+      .delete()
+      .eq('owner_email', ownerEmail)
+      .eq('key', key);
+
+    if (error) {
+      console.error('[Supabase] Delete semester error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[Supabase] Semester delete exception:', err);
+    return false;
   }
 }
