@@ -583,6 +583,8 @@ const App = () => {
         onLogout={handleLogout}
         semesters={semesters}
         announcements={announcements}
+        userRole={userRole}
+        isReadOnly={true}
         onUpdateStudent={updateStudentInBothStates}
       />
     );

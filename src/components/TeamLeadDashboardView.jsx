@@ -23,8 +23,10 @@ export const TeamLeadDashboardView = ({
   announcements = [],
   isEmbedded = false,
   userRole = 'teamLead',
+  isReadOnly = (userRole === 'teamLead'),
   onUpdateStudent
 }) => {
+  const canEdit = !isReadOnly && userRole !== 'teamLead' && (userRole === 'admin' || userRole === 'classAdmin');
   const [activeTab, setActiveTab] = useState('roster');
   const [search, setSearch] = useState('');
   const [selectedTeams, setSelectedTeams] = useState(userTeam ? [userTeam] : []);
@@ -600,7 +602,7 @@ export const TeamLeadDashboardView = ({
                           <th className="px-4 py-3.5">Class Section</th>
                           <th className="px-4 py-3.5">Hostel Room</th>
                           <th className="px-4 py-3.5">Team</th>
-                          <th className="px-4 py-3.5 text-center">Action</th>
+                          {canEdit && <th className="px-4 py-3.5 text-center">Action</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -624,14 +626,16 @@ export const TeamLeadDashboardView = ({
                                 {s.team || teamName}
                               </span>
                             </td>
-                            <td className="px-4 py-3.5 text-center">
-                              <button
-                                onClick={() => openEditModal(s)}
-                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" /> Edit
-                              </button>
-                            </td>
+                            {canEdit && (
+                              <td className="px-4 py-3.5 text-center">
+                                <button
+                                  onClick={() => openEditModal(s)}
+                                  className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" /> Edit
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -673,7 +677,7 @@ export const TeamLeadDashboardView = ({
                           <th className="px-4 py-3.5">Email Address</th>
                           <th className="px-4 py-3.5">Village / Mandal</th>
                           <th className="px-4 py-3.5">District, State & Pincode</th>
-                          <th className="px-4 py-3.5 text-center">Action</th>
+                          {canEdit && <th className="px-4 py-3.5 text-center">Action</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -713,14 +717,16 @@ export const TeamLeadDashboardView = ({
                                   {addr.state || 'Andhra Pradesh'} {addr.pincode ? `- ${addr.pincode}` : ''}
                                 </span>
                               </td>
-                              <td className="px-4 py-3.5 text-center">
-                                <button
-                                  onClick={() => openEditModal(s)}
-                                  className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" /> Edit
-                                </button>
-                              </td>
+                              {canEdit && (
+                                <td className="px-4 py-3.5 text-center">
+                                  <button
+                                    onClick={() => openEditModal(s)}
+                                    className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" /> Edit
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           );
                         })}
@@ -766,7 +772,7 @@ export const TeamLeadDashboardView = ({
                           <th className="px-4 py-3.5">State</th>
                           <th className="px-4 py-3.5">Pincode</th>
                           <th className="px-4 py-3.5">Full Address Summary</th>
-                          <th className="px-4 py-3.5 text-center">Action</th>
+                          {canEdit && <th className="px-4 py-3.5 text-center">Action</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -808,14 +814,16 @@ export const TeamLeadDashboardView = ({
                                   {fullAddr || 'Address Not Recorded'}
                                 </span>
                               </td>
-                              <td className="px-4 py-3.5 text-center">
-                                <button
-                                  onClick={() => openEditModal(s)}
-                                  className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" /> Edit
-                                </button>
-                              </td>
+                              {canEdit && (
+                                <td className="px-4 py-3.5 text-center">
+                                  <button
+                                    onClick={() => openEditModal(s)}
+                                    className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" /> Edit
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           );
                         })}
@@ -857,7 +865,7 @@ export const TeamLeadDashboardView = ({
                           <th className="px-4 py-3.5">Parent / Guardian Name(s)</th>
                           <th className="px-4 py-3.5">Parent Contact 1</th>
                           <th className="px-4 py-3.5">Parent Contact 2</th>
-                          <th className="px-4 py-3.5 text-center">Action</th>
+                          {canEdit && <th className="px-4 py-3.5 text-center">Action</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -889,14 +897,16 @@ export const TeamLeadDashboardView = ({
                                 </a>
                               ) : <span className="text-gray-300">—</span>}
                             </td>
-                            <td className="px-4 py-3.5 text-center">
-                              <button
-                                onClick={() => openEditModal(s)}
-                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" /> Edit
-                              </button>
-                            </td>
+                            {canEdit && (
+                              <td className="px-4 py-3.5 text-center">
+                                <button
+                                  onClick={() => openEditModal(s)}
+                                  className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" /> Edit
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -937,7 +947,7 @@ export const TeamLeadDashboardView = ({
                           <th className="px-4 py-3.5">ABC ID</th>
                           <th className="px-4 py-3.5">Laptop Available</th>
                           <th className="px-4 py-3.5">Club Membership</th>
-                          <th className="px-4 py-3.5 text-center">Action</th>
+                          {canEdit && <th className="px-4 py-3.5 text-center">Action</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -973,14 +983,16 @@ export const TeamLeadDashboardView = ({
                                 <span className="text-gray-300 text-xs">—</span>
                               )}
                             </td>
-                            <td className="px-4 py-3.5 text-center">
-                              <button
-                                onClick={() => openEditModal(s)}
-                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" /> Edit
-                              </button>
-                            </td>
+                            {canEdit && (
+                              <td className="px-4 py-3.5 text-center">
+                                <button
+                                  onClick={() => openEditModal(s)}
+                                  className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" /> Edit
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -1022,7 +1034,7 @@ export const TeamLeadDashboardView = ({
                             <th className="px-4 py-3.5">Roll No</th>
                             <th className="px-4 py-3.5 text-center">Backlog Count</th>
                             <th className="px-4 py-3.5">Backlog Subjects</th>
-                            <th className="px-4 py-3.5 text-center">Action</th>
+                            {canEdit && <th className="px-4 py-3.5 text-center">Action</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -1064,14 +1076,16 @@ export const TeamLeadDashboardView = ({
                                     <span className="text-gray-300 text-xs">—</span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3.5 text-center">
-                                  <button
-                                    onClick={() => openEditModal(s)}
-                                    className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" /> Edit
-                                  </button>
-                                </td>
+                                {canEdit && (
+                                  <td className="px-4 py-3.5 text-center">
+                                    <button
+                                      onClick={() => openEditModal(s)}
+                                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" /> Edit
+                                    </button>
+                                  </td>
+                                )}
                               </tr>
                             );
                           })}
@@ -1115,7 +1129,7 @@ export const TeamLeadDashboardView = ({
                             <th className="px-4 py-3.5">Roll No</th>
                             <th className="px-4 py-3.5">Allocated Project Title / Work</th>
                             <th className="px-4 py-3.5">Allocation Status</th>
-                            <th className="px-4 py-3.5 text-center">Action</th>
+                            {canEdit && <th className="px-4 py-3.5 text-center">Action</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -1144,14 +1158,16 @@ export const TeamLeadDashboardView = ({
                                     </span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3.5 text-center">
-                                  <button
-                                    onClick={() => openEditModal(s)}
-                                    className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" /> Edit
-                                  </button>
-                                </td>
+                                {canEdit && (
+                                  <td className="px-4 py-3.5 text-center">
+                                    <button
+                                      onClick={() => openEditModal(s)}
+                                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 mx-auto"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" /> Edit
+                                    </button>
+                                  </td>
+                                )}
                               </tr>
                             );
                           })}
@@ -1211,7 +1227,7 @@ export const TeamLeadDashboardView = ({
       </main>
 
       {/* --- EDIT STUDENT INFO & ADDRESS MODAL --- */}
-      {editingStudent && (
+      {canEdit && editingStudent && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 relative border border-gray-100 max-h-[90vh] overflow-y-auto">
             <button
