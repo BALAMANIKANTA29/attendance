@@ -13,6 +13,7 @@
     "lint": "eslint . --ext js,jsx"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "lucide-react": "^0.263.1",
