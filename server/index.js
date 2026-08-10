@@ -57,13 +57,31 @@ const getBacklogsGroupedByStudent = (studentsList, ownerEmail) => {
 
 const getContextInfo = (req) => {
   const userEmail = req.headers['x-user-email'] || '';
-  
+  const userTeam = req.headers['x-user-team'] || '';
+
+  // Check if team lead email (e.g., teamlead1@aidh.edu)
+  if (/^teamlead\d+@aidh\.edu$/i.test(userEmail)) {
+    const num = userEmail.match(/\d+/)?.[0];
+    return {
+      isStudent: false,
+      isTeamLead: true,
+      teamNumber: num ? parseInt(num, 10) : null,
+      team: userTeam || (num ? `TEAM-${num}` : ''),
+      userEmail: userEmail,
+      ownerEmail: 'k12aidha@example.com',
+      studentRoll: null,
+      studentName: null,
+      studentTeam: userTeam || (num ? `TEAM-${num}` : '')
+    };
+  }
+
   // Check if userEmail belongs to a student
   const student = db.prepare('SELECT owner_email, roll, name, team FROM students WHERE LOWER(email) = LOWER(?) LIMIT 1').get(userEmail);
   
   if (student) {
     return {
       isStudent: true,
+      isTeamLead: false,
       userEmail: userEmail,
       ownerEmail: student.owner_email,
       studentRoll: student.roll,
@@ -75,8 +93,9 @@ const getContextInfo = (req) => {
   // Otherwise, treat them as the owner admin
   return {
     isStudent: false,
+    isTeamLead: false,
     userEmail: userEmail,
-    ownerEmail: userEmail,
+    ownerEmail: userEmail || 'k12aidha@example.com',
     studentRoll: null,
     studentName: null,
     studentTeam: null
@@ -98,9 +117,25 @@ app.post('/api/auth/login', (req, res) => {
     return res.json({ success: true, role: 'admin', email: 'bmk@example.com', name: 'Super Admin' });
   }
 
-  // 2. Class Admin
-  if (id.toUpperCase() === 'K12AIDHA' && pass === 'k12AIDHA') {
-    return res.json({ success: true, role: 'classAdmin', email: 'k12aidha@example.com', name: 'Class Admin' });
+  // 2. Class Admin (20056 / 20056)
+  if ((id === '20056' || id.toUpperCase() === 'K12AIDHA') && (pass === '20056' || pass === 'k12AIDHA')) {
+    return res.json({ success: true, role: 'classAdmin', email: '20056@example.com', name: 'Class Admin' });
+  }
+
+  // 2.5 Team Leaders (AIDHT1 to AIDHT12)
+  const teamMatch = id.toUpperCase().match(/^AIDHT([1-9]|1[0-2])$/);
+  if (teamMatch) {
+    const teamNum = teamMatch[1];
+    if (pass.toUpperCase() === id.toUpperCase()) {
+      return res.json({
+        success: true,
+        role: 'teamLead',
+        team: `TEAM-${teamNum}`,
+        teamNumber: parseInt(teamNum, 10),
+        email: `teamlead${teamNum}@aidh.edu`,
+        name: `Team ${teamNum} Leader`
+      });
+    }
   }
 
   // 3. Student
@@ -133,8 +168,13 @@ app.post('/api/auth/login', (req, res) => {
 app.get('/api/students', (req, res) => {
   try {
     const context = getContextInfo(req);
+    const userRole = req.headers['x-user-role'] || '';
+    const userTeam = req.headers['x-user-team'] || '';
+
     let students;
-    if (context.isStudent) {
+    if (userRole === 'teamLead' && userTeam) {
+      students = db.prepare('SELECT * FROM students WHERE owner_email = ? AND UPPER(team) = UPPER(?)').all(context.ownerEmail, userTeam);
+    } else if (context.isStudent) {
       students = db.prepare('SELECT * FROM students WHERE owner_email = ? AND LOWER(email) = LOWER(?)').all(context.ownerEmail, context.userEmail);
     } else {
       students = db.prepare('SELECT * FROM students WHERE owner_email = ?').all(context.ownerEmail);

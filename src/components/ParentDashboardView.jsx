@@ -48,10 +48,12 @@ export const ParentDashboardView = ({ student, attendanceHistory = {}, onLogout,
   const parentAnnouncements = useMemo(() => {
     return (announcements || []).filter(ann => 
       ann.target === 'everyone' || 
+      ann.target === 'all' || 
       ann.target === 'parents' || 
-      (ann.target === 'team' && (ann.targetTeam || '').toLowerCase() === (student.team || '').toLowerCase())
+      ann.target === 'parent' || 
+      (ann.target === 'team' && (ann.targetTeam || '').trim().toLowerCase() === (student?.team || '').trim().toLowerCase())
     );
-  }, [announcements, student.team]);
+  }, [announcements, student?.team]);
 
   const startEditing = () => {
     setFormData({
@@ -187,7 +189,7 @@ export const ParentDashboardView = ({ student, attendanceHistory = {}, onLogout,
   }, [attendanceStats, backlogsBySemester, student]);
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans antialiased text-gray-800">
+    <div className="min-h-screen bg-gray-50 font-sans antialiased text-gray-800 dashboard-print-root">
       {/* Parent Navbar */}
       <header className="bg-white shadow-md p-4 sticky top-0 z-20 flex justify-between items-center print:hidden border-b border-gray-150">
         <div className="flex items-center space-x-3">
@@ -262,13 +264,17 @@ export const ParentDashboardView = ({ student, attendanceHistory = {}, onLogout,
         </div>
 
         {/* Announcements Feed */}
-        {parentAnnouncements.length > 0 && (
-          <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-md space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
-            <h3 className="text-base font-bold text-gray-800 flex items-center gap-2 pb-2 border-b border-gray-100">
-              <Megaphone className="w-5 h-5 text-indigo-600 animate-pulse" /> Latest Broadcast Announcements
-            </h3>
-            <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
-              {parentAnnouncements.map(ann => {
+        <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-md space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+          <h3 className="text-base font-bold text-gray-800 flex items-center gap-2 pb-2 border-b border-gray-100">
+            <Megaphone className="w-5 h-5 text-indigo-600 animate-pulse" /> Latest Broadcast Announcements
+          </h3>
+          <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+            {parentAnnouncements.length === 0 ? (
+              <div className="p-4 rounded-2xl border border-gray-100 bg-gray-50 text-xs text-gray-500 text-center font-medium">
+                No active broadcast announcements at this time.
+              </div>
+            ) : (
+              parentAnnouncements.map(ann => {
                 const isWarning = ann.category === 'warning';
                 const isEvent = ann.category === 'event';
                 const isHoliday = ann.category === 'holiday';
@@ -290,10 +296,10 @@ export const ParentDashboardView = ({ student, attendanceHistory = {}, onLogout,
                     <p className="text-[10px] text-gray-400 font-semibold">{new Date(ann.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                   </div>
                 );
-              })}
-            </div>
+              })
+            )}
           </div>
-        )}
+        </div>
 
         {/* Dashboard Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 print:grid-cols-2 gap-6 print:gap-4">

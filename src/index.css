@@ -61,26 +61,7 @@ body {
     print-color-adjust: exact !important;
   }
 
-  /* Prevent cards and sections from breaking across pages */
-  .bg-white,
-  .bg-white.rounded-2xl,
-  .bg-white.rounded-3xl,
-  .bg-white.rounded-xl,
-  .rounded-2xl,
-  .rounded-3xl,
-  .shadow-lg,
-  main > div,
-  main > section {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-  }
-
   /* Hide non-printable UI elements */
-  header,
-  nav,
-  main>nav,
-  aside,
-  footer,
   .print\:hidden {
     display: none !important;
     height: 0 !important;
@@ -90,7 +71,7 @@ body {
   }
 
   @page {
-    margin: 1cm;
+    margin: 0.8cm;
     size: A4;
   }
 
@@ -102,12 +83,39 @@ body {
     min-height: 0 !important;
     overflow: visible !important;
     background: white !important;
+    font-size: 11px !important;
   }
 
-  #root,
-  .min-h-screen,
-  main,
-  .flex-1 {
+  /* ── Admin sidebar layout resets ─────────────────────────────── */
+  /* Only target the admin layout wrapper (has both nav + .flex-1) */
+  body > #root > .min-h-screen > header,
+  body > #root > .min-h-screen > nav,
+  body > #root > .min-h-screen > main > nav,
+  aside,
+  footer {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #root {
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Admin layout main area */
+  body > #root > .min-h-screen > main {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  body > #root > .min-h-screen > main > .flex-1 {
     min-height: 0 !important;
     height: auto !important;
     display: block !important;
@@ -120,6 +128,96 @@ body {
     overflow: visible !important;
   }
 
+  /* ── Student/Parent Dashboard print layout ───────────────────── */
+  .dashboard-print-root {
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    padding: 0 !important;
+  }
+
+  .dashboard-print-root > main {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0.5cm 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Remove shadows and excessive rounding in print */
+  .dashboard-print-root .shadow-lg,
+  .dashboard-print-root .shadow-xl,
+  .dashboard-print-root .shadow-2xl,
+  .dashboard-print-root .shadow-md {
+    box-shadow: none !important;
+  }
+
+  /* Cards should try to avoid page breaks, but allow if too tall */
+  .dashboard-print-root .rounded-2xl,
+  .dashboard-print-root .rounded-3xl {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px !important;
+  }
+
+  /* Remove scroll limits so all content is visible in print */
+  .dashboard-print-root .overflow-y-auto,
+  .dashboard-print-root .overflow-x-auto {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .dashboard-print-root [class*="max-h-"] {
+    max-height: none !important;
+  }
+
+  /* Grid stays 2-col in print for dashboards */
+  .dashboard-print-root .grid.lg\:grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  /* Gradient banners → flat white with border in print */
+  .dashboard-print-root [class*="bg-gradient-to"] {
+    background: white !important;
+    color: #111827 !important;
+    border: 1px solid #d1d5db !important;
+  }
+
+  .dashboard-print-root [class*="bg-gradient-to"] * {
+    color: #111827 !important;
+  }
+
+  .dashboard-print-root [class*="bg-gradient-to"] span[class*="bg-emerald"],
+  .dashboard-print-root [class*="bg-gradient-to"] span[class*="bg-indigo"] {
+    background: #f0fdf4 !important;
+    color: #065f46 !important;
+    border: 1px solid #a7f3d0 !important;
+  }
+
+  /* Blur decorative blobs hidden */
+  .dashboard-print-root [class*="blur-"] {
+    display: none !important;
+  }
+
+  /* Preserve status badge colors in print */
+  .dashboard-print-root .bg-emerald-50,
+  .dashboard-print-root [class*="bg-emerald-50"] {
+    background-color: #ecfdf5 !important;
+  }
+
+  .dashboard-print-root .bg-rose-50,
+  .dashboard-print-root [class*="bg-rose-50"] {
+    background-color: #fff1f2 !important;
+  }
+
+  .dashboard-print-root .bg-amber-50,
+  .dashboard-print-root [class*="bg-amber-50"] {
+    background-color: #fffbeb !important;
+  }
+
+  /* ── Print container (admin report views) ────────────────────── */
   .print-container {
     display: block !important;
     width: 100% !important;
@@ -129,7 +227,6 @@ body {
     color: #000;
   }
 
-  /* Reset all potential spacing in print container */
   .print-container div,
   .print-container section {
     margin-top: 0 !important;
@@ -144,6 +241,16 @@ body {
     page-break-inside: auto;
   }
 
+  /* Prevent cards and sections from breaking across pages (admin) */
+  .print-container .bg-white,
+  .print-container .rounded-2xl,
+  .print-container .rounded-3xl,
+  .print-container .shadow-lg {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* ── Shared table print styles ───────────────────────────────── */
   table {
     border-collapse: collapse;
     width: 100% !important;
@@ -169,6 +276,22 @@ body {
     background: #f0f0f0 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  /* ── StudentAttendanceReport (modal) print ───────────────────── */
+  .student-report-print {
+    position: static !important;
+    background: white !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .student-report-print > div {
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
   }
 }
 

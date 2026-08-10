@@ -91,6 +91,22 @@ owners.forEach(owner => {
 
 const getContextInfo = (req) => {
   const userEmail = req.headers['x-user-email'] || '';
+  const userTeam = req.headers['x-user-team'] || '';
+
+  if (/^teamlead\d+@aidh\.edu$/i.test(userEmail)) {
+    const num = userEmail.match(/\d+/)?.[0];
+    return {
+      isStudent: false,
+      isTeamLead: true,
+      teamNumber: num ? parseInt(num, 10) : null,
+      team: userTeam || (num ? `TEAM-${num}` : ''),
+      userEmail: userEmail,
+      ownerEmail: 'k12aidha@example.com',
+      studentRoll: null,
+      studentName: null,
+      studentTeam: userTeam || (num ? `TEAM-${num}` : '')
+    };
+  }
   
   if (db) {
     const student = db.prepare('SELECT owner_email, roll, name, team FROM students WHERE LOWER(email) = LOWER(?) LIMIT 1').get(userEmail);
@@ -123,7 +139,7 @@ const getContextInfo = (req) => {
   return {
     isStudent: false,
     userEmail: userEmail,
-    ownerEmail: userEmail,
+    ownerEmail: userEmail || 'k12aidha@example.com',
     studentRoll: null,
     studentName: null,
     studentTeam: null
@@ -185,8 +201,25 @@ app.post('/api/auth/login', (req, res) => {
     return res.json({ success: true, role: 'admin', email: 'bmk@example.com', name: 'Super Admin' });
   }
 
-  if (id.toUpperCase() === 'K12AIDHA' && pass === 'k12AIDHA') {
-    return res.json({ success: true, role: 'classAdmin', email: 'k12aidha@example.com', name: 'Class Admin' });
+  // 2. Class Admin (20056 / 20056)
+  if ((id === '20056' || id.toUpperCase() === 'K12AIDHA') && (pass === '20056' || pass === 'k12AIDHA')) {
+    return res.json({ success: true, role: 'classAdmin', email: '20056@example.com', name: 'Class Admin' });
+  }
+
+  // Team Leaders (AIDHT1 to AIDHT12)
+  const teamMatch = id.toUpperCase().match(/^AIDHT([1-9]|1[0-2])$/);
+  if (teamMatch) {
+    const teamNum = teamMatch[1];
+    if (pass.toUpperCase() === id.toUpperCase()) {
+      return res.json({
+        success: true,
+        role: 'teamLead',
+        team: `TEAM-${teamNum}`,
+        teamNumber: parseInt(teamNum, 10),
+        email: `teamlead${teamNum}@aidh.edu`,
+        name: `Team ${teamNum} Leader`
+      });
+    }
   }
 
   const idClean = id.toLowerCase();
@@ -244,9 +277,14 @@ app.post('/api/auth/login', (req, res) => {
 app.get('/api/students', (req, res) => {
   try {
     const context = getContextInfo(req);
+    const userRole = req.headers['x-user-role'] || '';
+    const userTeam = req.headers['x-user-team'] || '';
+
     if (db) {
       let rows;
-      if (context.isStudent) {
+      if (userRole === 'teamLead' && userTeam) {
+        rows = db.prepare('SELECT * FROM students WHERE owner_email = ? AND UPPER(team) = UPPER(?)').all(context.ownerEmail, userTeam);
+      } else if (context.isStudent) {
         rows = db.prepare('SELECT * FROM students WHERE owner_email = ? AND LOWER(email) = LOWER(?)').all(context.ownerEmail, context.userEmail);
       } else {
         rows = db.prepare('SELECT * FROM students WHERE owner_email = ?').all(context.ownerEmail);
@@ -255,7 +293,9 @@ app.get('/api/students', (req, res) => {
     }
     
     let list = students[context.ownerEmail] || [];
-    if (context.isStudent) {
+    if (userRole === 'teamLead' && userTeam) {
+      list = list.filter(s => (s.team || '').toUpperCase() === userTeam.toUpperCase());
+    } else if (context.isStudent) {
       list = list.filter(s => (s.email || '').toLowerCase() === context.userEmail.toLowerCase());
     }
     res.json(list);

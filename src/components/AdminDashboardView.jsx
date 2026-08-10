@@ -3,7 +3,7 @@ import {
   Users, UserCheck, Calendar, BookOpen, BarChart2,
   PhoneCall, Info, Settings, AlertTriangle, CheckCircle,
   TrendingUp, TrendingDown, Clock, ArrowRight, Activity,
-  GraduationCap, Laptop, Shield, Zap
+  GraduationCap, Laptop, Shield, Zap, Megaphone
 } from 'lucide-react';
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -127,7 +127,30 @@ export const AdminDashboardView = ({
   userRole,
   adminUsername,
   setCurrentView,
+  changeView,
 }) => {
+
+  const isSuperAdmin = userRole === 'admin';
+
+  const handleCardClick = (label) => {
+    if (label === 'Laptop Owners') {
+      if (changeView) {
+        changeView('studentInfo', { activeTab: 'table', laptopFilter: 'yes' });
+      } else {
+        setCurrentView('studentInfo');
+      }
+    } else if (label === 'ABC IDs Filled') {
+      if (changeView) {
+        changeView('studentInfo', { activeTab: 'abc', laptopFilter: 'all' });
+      } else {
+        setCurrentView('studentInfo');
+      }
+    } else if (label === 'With Backlogs') {
+      setCurrentView('backlogs');
+    } else if (label === 'CRT Trainees') {
+      setCurrentView('crtMarking');
+    }
+  };
 
   // ── Compute stats ─────────────────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -452,26 +475,33 @@ export const AdminDashboardView = ({
             color: 'text-emerald-600',
             bg: 'bg-emerald-50',
           },
-        ].map(({ label, value, total, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <div className={`${bg} w-10 h-10 rounded-xl flex items-center justify-center mb-3`}>
-              <Icon className={`w-5 h-5 ${color}`} />
-            </div>
-            <p className="text-2xl font-extrabold text-gray-900">{value}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-            {total > 0 && (
-              <div className="mt-2">
-                <div className="w-full bg-gray-100 rounded-full h-1.5">
-                  <div
-                    className={`h-1.5 rounded-full ${color.replace('text-', 'bg-')}`}
-                    style={{ width: `${Math.round((value / total) * 100)}%` }}
-                  />
-                </div>
-                <p className="text-xs text-gray-400 mt-0.5">{Math.round((value / total) * 100)}% of class</p>
+        ].map(({ label, value, total, icon: Icon, color, bg }) => {
+          return (
+            <button
+              key={label}
+              onClick={() => handleCardClick(label)}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-left w-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20
+                cursor-pointer hover:shadow-md hover:scale-[1.02] hover:border-gray-200 active:scale-98"
+            >
+              <div className={`${bg} w-10 h-10 rounded-xl flex items-center justify-center mb-3`}>
+                <Icon className={`w-5 h-5 ${color}`} />
               </div>
-            )}
-          </div>
-        ))}
+              <p className="text-2xl font-extrabold text-gray-900">{value}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+              {total > 0 && (
+                <div className="mt-2">
+                  <div className="w-full bg-gray-100 rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full ${color.replace('text-', 'bg-')}`}
+                      style={{ width: `${Math.round((value / total) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">{Math.round((value / total) * 100)}% of class</p>
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Quick Navigation ── */}
@@ -487,9 +517,11 @@ export const AdminDashboardView = ({
           <QuickNavCard icon={Calendar}     label="CRT Attendance Log"    desc="Browse CRT attendance history"           color="teal"    onClick={() => setCurrentView('crtLog')} />
           <QuickNavCard icon={Users}        label="Class Members"         desc="Manage roll list & class roster"         color="emerald" onClick={() => setCurrentView('classMembers')} />
           <QuickNavCard icon={Info}         label="Student Info"          desc="View profiles, teams & ABC IDs"          color="indigo"  onClick={() => setCurrentView('studentInfo')} />
+          <QuickNavCard icon={Shield}       label="Team Leaders Dashboard" desc="View team rosters, backlogs & projects" color="amber"   onClick={() => setCurrentView('teamLeadDashboard')} />
           <QuickNavCard icon={BookOpen}     label="Backlogs"              desc="Track semester-wise backlogs"            color="amber"   onClick={() => setCurrentView('backlogs')} />
           <QuickNavCard icon={BarChart2}    label="Subject-wise Backlogs" desc="See backlog count by subject"            color="rose"    onClick={() => setCurrentView('subjectWise')} />
           <QuickNavCard icon={PhoneCall}    label="Parent Details"        desc="Contact info for parents"                color="pink"    onClick={() => setCurrentView('parentDetails')} />
+          <QuickNavCard icon={Megaphone}    label="Announcements"         desc="Broadcast notices to students & parents" color="amber"   onClick={() => setCurrentView('announcements')} />
           {userRole === 'admin' && (
             <QuickNavCard icon={Settings}  label="Admin Settings"        desc="Configure class info & policies"         color="sky"     onClick={() => setCurrentView('adminSettings')} />
           )}

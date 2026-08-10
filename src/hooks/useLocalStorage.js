@@ -58,13 +58,13 @@ export const useLocalStorage = (key, initialValue, userEmail) => {
 
   // 3. Background Sync from Database on Mount / email change
   useEffect(() => {
-    if (!userEmail) return;
+    const syncEmail = userEmail || 'k12aidha@example.com';
 
     const syncWithDb = async () => {
       try {
         const res = await fetch(`${API_URL}/settings/${key}`, {
           headers: {
-            'x-user-email': userEmail
+            'x-user-email': syncEmail
           }
         });
         if (!res.ok) return;
@@ -74,7 +74,7 @@ export const useLocalStorage = (key, initialValue, userEmail) => {
         // If DB has data, prefer it over LocalStorage
         if (dbValue !== null && JSON.stringify(dbValue) !== JSON.stringify(storedValue)) {
           setStoredValue(dbValue);
-          const storageKey = `${userEmail}:${key}`;
+          const storageKey = userEmail ? `${userEmail}:${key}` : key;
           window.localStorage.setItem(storageKey, JSON.stringify(dbValue));
         }
       } catch (err) {

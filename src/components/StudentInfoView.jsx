@@ -181,16 +181,45 @@ const EditStudentModal = ({ student, teams, onSave, onClose, directAccess }) => 
     );
 };
 
-export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData, directAccess, onViewStudentDashboard, onViewParentDashboard, userRole, onNavigateToClassMembers }) => {
+export const StudentInfoView = ({
+    studentInfoData: propData,
+    setStudentInfoData,
+    directAccess,
+    onViewStudentDashboard,
+    onViewParentDashboard,
+    userRole,
+    isReadOnly = false,
+    onNavigateToClassMembers,
+    filters,
+}) => {
     const data = propData || defaultData;
     const teams = useMemo(() => [...new Set(data.map(s => s.team))], [data]);
 
-    const [search, setSearch] = useState('');
-    const [teamFilter, setTeamFilter] = useState('all');
-    const [laptopFilter, setLaptopFilter] = useState('all');
-    const [projectFilter, setProjectFilter] = useState('all');
-    const [districtFilter, setDistrictFilter] = useState('all');
-    const [activeTab, setActiveTab] = useState('table');
+    const [search, setSearch] = useState(filters?.search || '');
+    const [teamFilter, setTeamFilter] = useState(filters?.teamFilter || 'all');
+    const [laptopFilter, setLaptopFilter] = useState(filters?.laptopFilter || 'all');
+    const [projectFilter, setProjectFilter] = useState(filters?.projectFilter || 'all');
+    const [districtFilter, setDistrictFilter] = useState(filters?.districtFilter || 'all');
+    const [activeTab, setActiveTab] = useState(filters?.activeTab || 'table');
+
+    React.useEffect(() => {
+        if (filters) {
+            setSearch(filters.search !== undefined ? filters.search : '');
+            setTeamFilter(filters.teamFilter !== undefined ? filters.teamFilter : 'all');
+            setLaptopFilter(filters.laptopFilter !== undefined ? filters.laptopFilter : 'all');
+            setProjectFilter(filters.projectFilter !== undefined ? filters.projectFilter : 'all');
+            setDistrictFilter(filters.districtFilter !== undefined ? filters.districtFilter : 'all');
+            setActiveTab(filters.activeTab !== undefined ? filters.activeTab : 'table');
+        } else {
+            setSearch('');
+            setTeamFilter('all');
+            setLaptopFilter('all');
+            setProjectFilter('all');
+            setDistrictFilter('all');
+            setActiveTab('table');
+        }
+    }, [filters]);
+
     const [editingStudent, setEditingStudent] = useState(null);
 
     const districts = useMemo(() => [...new Set(data.map(s => s.district).filter(Boolean))].sort(), [data]);
@@ -353,6 +382,16 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
                 />
             )}
 
+            {isReadOnly && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl font-semibold text-xs flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-2">
+                        <span>🔒</span>
+                        <span>Team Leader View — Read-Only Mode (Strictly limited to your assigned team details)</span>
+                    </div>
+                    <span className="bg-amber-200 text-amber-900 px-2.5 py-1 rounded-md font-mono text-[10px] font-bold">READ ONLY ACCESS</span>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -363,13 +402,13 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
                     <p className="text-sm text-gray-400 mt-1">Teams 1–12 · K1 &amp; K2 · K12AIDHA</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                    {onNavigateToClassMembers && (
+                    {!isReadOnly && onNavigateToClassMembers && (
                         <button onClick={onNavigateToClassMembers}
                             className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 text-indigo-700 text-sm font-semibold px-4 py-2 rounded-lg shadow-sm transition-all active:scale-95">
                             <Users className="w-4 h-4" /> Manage Class Members <ArrowRight className="w-4 h-4" />
                         </button>
                     )}
-                    {directAccess && (
+                    {!isReadOnly && directAccess && (
                         <button onClick={handleAddStudent}
                             className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transition-all active:scale-95">
                             <Plus className="w-4 h-4" /> Add Student
@@ -469,7 +508,7 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
                                 {['S.No', 'Team', 'Roll No', 'Name', 'Email', 'Club', 'ABC ID'].map(h => (
                                     <th key={h} className="px-3 py-3 text-left font-semibold uppercase tracking-wider whitespace-nowrap">{h}</th>
                                 ))}
-                                {setStudentInfoData && (
+                                {!isReadOnly && setStudentInfoData && (
                                     <th className="px-3 py-3 text-center font-semibold uppercase tracking-wider">Actions</th>
                                 )}
                             </tr>
@@ -502,7 +541,7 @@ export const StudentInfoView = ({ studentInfoData: propData, setStudentInfoData,
                                         <td className="px-3 py-2 font-mono text-indigo-700 text-xs whitespace-nowrap">
                                             {s.abcId || <span className="text-gray-300">—</span>}
                                         </td>
-                                        {setStudentInfoData && (
+                                        {!isReadOnly && setStudentInfoData && (
                                             <td className="px-3 py-2 text-center">
                                                 <div className="flex flex-wrap justify-center gap-1">
                                                     {userRole === 'admin' && (

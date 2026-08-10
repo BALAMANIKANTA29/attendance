@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, UserCheck, LogOut, Menu, X, CheckCircle, Users, Settings, BookOpen, BarChart2, PhoneCall, Info, ChevronDown, LayoutDashboard, Megaphone } from 'lucide-react';
+import { Calendar, UserCheck, LogOut, Menu, X, CheckCircle, Users, Settings, BookOpen, BarChart2, PhoneCall, Info, ChevronDown, LayoutDashboard, Megaphone, Shield } from 'lucide-react';
 
 import { DailyMarkingView } from './components/DailyMarkingView';
 import { PrintReportView } from './components/PrintReportView';
@@ -13,6 +13,7 @@ import { ParentDetailsView } from './components/ParentDetailsView';
 import { StudentInfoView } from './components/StudentInfoView';
 import { StudentDashboardView } from './components/StudentDashboardView';
 import { ParentDashboardView } from './components/ParentDashboardView';
+import { TeamLeadDashboardView } from './components/TeamLeadDashboardView';
 import { ChatBot } from './components/ChatBot';
 import { AdminDashboardView } from './components/AdminDashboardView';
 import { AnnouncementsView } from './components/AnnouncementsView';
@@ -24,12 +25,19 @@ import { crtStudentData as defaultCrtStudentData } from './data/crtStudentData';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState('admin'); // 'admin', 'classAdmin', 'student', or 'parent'
+  const [userRole, setUserRole] = useState('admin'); // 'admin', 'classAdmin', 'teamLead', 'student', or 'parent'
   const [userEmail, setUserEmail] = useState(null);
+  const [userTeam, setUserTeam] = useState(null);
   const [adminUsername, setAdminUsername] = useState('');
   const [currentStudentRoll, setCurrentStudentRoll] = useState(null);
   const [previewStudentRoll, setPreviewStudentRoll] = useState(null);
   const [currentView, setCurrentView] = useState('dailyMarking');
+  const [studentInfoFilters, setStudentInfoFilters] = useState(null);
+
+  const changeView = (view, filters = null) => {
+    setStudentInfoFilters(filters);
+    setCurrentView(view);
+  };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState({
     attendance: true,
@@ -56,7 +64,39 @@ const App = () => {
       target: 'everyone',
       date: new Date().toISOString()
     }
-  ], userEmail);
+  ]);
+
+  // Migrate any legacy namespaced announcements into global announcements
+  React.useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      let foundAny = [];
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (k && k.endsWith(':announcements')) {
+          const item = window.localStorage.getItem(k);
+          if (item) {
+            const parsed = JSON.parse(item);
+            if (Array.isArray(parsed)) {
+              foundAny = [...foundAny, ...parsed];
+            }
+          }
+        }
+      }
+      if (foundAny.length > 0) {
+        setAnnouncements(prev => {
+          const existingIds = new Set((prev || []).map(a => a.id));
+          const uniqueNew = foundAny.filter(a => a && a.id && !existingIds.has(a.id));
+          if (uniqueNew.length > 0) {
+            return [...uniqueNew, ...prev];
+          }
+          return prev;
+        });
+      }
+    } catch (e) {
+      console.error('Error migrating namespaced announcements:', e);
+    }
+  }, [setAnnouncements]);
 
   const [crtStudents, setCrtStudents] = useLocalStorage('crtStudents', defaultCrtStudentData, userEmail);
 
@@ -78,6 +118,12 @@ const App = () => {
       const restrictedViewsForClassAdmin = ['adminSettings', 'studentDashboardPreview', 'parentDashboardPreview'];
       if (restrictedViewsForClassAdmin.includes(currentView)) {
         setCurrentView('dailyMarking');
+      }
+    }
+    if (isAuthenticated && userRole === 'teamLead') {
+      const restrictedViewsForTeamLead = ['dailyMarking', 'crtMarking', 'crtLog', 'adminSettings', 'dashboard', 'studentDashboardPreview', 'parentDashboardPreview', 'parentDetails'];
+      if (restrictedViewsForTeamLead.includes(currentView)) {
+        setCurrentView('studentInfo');
       }
     }
   }, [userRole, currentView, isAuthenticated]);
@@ -113,7 +159,8 @@ const App = () => {
   const [studentInfoDataState, setStudentInfoDataState] = useLocalStorage('studentInfoData', defaultStudentInfoData, userEmail);
 
   // Migration: merge ALL missing/empty fields from defaultStudentInfoData into cached localStorage records.
-  // Also converts legacy `backlogSubs` field into per-semester `s31` field for dashboard display.
+  // Also converts legacy `backlogSubs` field into per-semester `s31` field for dashboard display,
+  // and syncs any missing default students into studentInfoDataState and studentsState.
   React.useEffect(() => {
     const existingInfoRolls = new Set((studentInfoDataState || []).map(s => (s.roll || s.id || '').toUpperCase()));
     const missingInfo = defaultStudentInfoData.filter(d => !existingInfoRolls.has(d.roll.toUpperCase()));
@@ -147,7 +194,6 @@ const App = () => {
 
       const patch = {};
       Object.keys(defaults).forEach(field => {
-        if (userEditableFields.has(field)) return;
         if (stored[field] === undefined || stored[field] === null || stored[field] === '') {
           if (defaults[field] !== undefined && defaults[field] !== null && defaults[field] !== '') {
             patch[field] = defaults[field];
@@ -155,7 +201,7 @@ const App = () => {
         }
       });
 
-      const allSemEmpty = semFields.every(k => !stored[k] || stored[k].trim() === '');
+      const allSemEmpty = semFields.every(k => !stored[k] || String(stored[k]).trim() === '');
       if (allSemEmpty && defaults.backlogSubs && defaults.backlogSubs.trim() !== '') {
         patch.s31 = defaults.backlogSubs;
         patch.backlogs = defaults.backlogSubs.split(',').filter(s => s.trim()).length;
@@ -215,12 +261,53 @@ const App = () => {
     fetchCourses();
   }, [userEmail]);
 
-  const students = studentsState;
-  const studentInfoData = studentInfoDataState;
+  const studentInfoData = React.useMemo(() => {
+    const rawList = (studentInfoDataState && studentInfoDataState.length > 0)
+      ? studentInfoDataState
+      : defaultStudentInfoData;
+
+    const sourceList = rawList.map(s => {
+      const defaults = defaultStudentInfoData.find(
+        d => d.roll.toUpperCase() === (s.roll || s.id || '').toUpperCase()
+      );
+      if (!defaults) return s;
+      return {
+        ...defaults,
+        ...s,
+        village: (s.village && s.village.trim() !== '') ? s.village : (defaults.village || ''),
+        mandal: (s.mandal && s.mandal.trim() !== '') ? s.mandal : (defaults.mandal || ''),
+        district: (s.district && s.district.trim() !== '') ? s.district : (defaults.district || ''),
+        state: (s.state && s.state.trim() !== '') ? s.state : (defaults.state || 'Andhra Pradesh'),
+        pincode: (s.pincode && String(s.pincode).trim() !== '') ? s.pincode : (defaults.pincode || ''),
+      };
+    });
+
+    if (userRole === 'teamLead') {
+      const target = userTeam || adminUsername || '';
+      const numMatch = target.match(/\d+/)?.[0];
+      return sourceList.filter(s => {
+        if (!s.team) return false;
+        if (numMatch) {
+          const sNum = String(s.team).match(/\d+/)?.[0];
+          if (sNum && sNum === numMatch) return true;
+        }
+        return (s.team || '').toUpperCase().replace(/[\s-]/g, '') === target.toUpperCase().replace(/[\s-]/g, '');
+      });
+    }
+    return sourceList;
+  }, [studentInfoDataState, userRole, userTeam, adminUsername]);
+
+  const students = React.useMemo(() => {
+    if (userRole === 'teamLead' && userTeam) {
+      const teamRolls = new Set(studentInfoData.map(s => (s.roll || s.id || '').toUpperCase()));
+      return studentsState.filter(st => teamRolls.has((st.id || st.roll || '').toUpperCase()));
+    }
+    return studentsState;
+  }, [studentsState, userRole, userTeam, studentInfoData]);
 
   const teams = React.useMemo(() => {
-    return Array.from(new Set(studentInfoData.map(s => s.team).filter(Boolean))).sort();
-  }, [studentInfoData]);
+    return Array.from(new Set(studentInfoDataState.map(s => s.team).filter(Boolean))).sort();
+  }, [studentInfoDataState]);
 
   const setStudents = (value) => {
     setStudentsState(prev => {
@@ -310,13 +397,19 @@ const App = () => {
     });
   };
 
-  const handleLogin = (role, rollOrUsername = null, email = null) => {
+  const handleLogin = (role, rollOrUsername = null, email = null, team = null) => {
     setUserRole(role || 'admin');
     setIsAuthenticated(true);
     setUserEmail(email);
+    setUserTeam(team || null);
     if (role === 'student' || role === 'parent') {
       setCurrentStudentRoll(rollOrUsername);
       setCurrentView(role === 'student' ? 'studentDashboard' : 'parentDashboard');
+      setDirectAccess(false);
+    } else if (role === 'teamLead') {
+      setAdminUsername(rollOrUsername || 'Team Leader');
+      setCurrentStudentRoll(null);
+      setCurrentView('studentInfo');
       setDirectAccess(false);
     } else {
       setAdminUsername(rollOrUsername || '');
@@ -329,6 +422,7 @@ const App = () => {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUserRole('admin');
+    setUserTeam(null);
     setCurrentStudentRoll(null);
     setAdminUsername('');
     setCurrentView('dailyMarking');
@@ -430,13 +524,29 @@ const App = () => {
     );
   }
 
+  if (userRole === 'teamLead') {
+    return (
+      <TeamLeadDashboardView
+        userTeam={userTeam}
+        userEmail={userEmail}
+        adminUsername={adminUsername}
+        teamStudents={studentInfoData}
+        attendanceHistory={attendanceHistory}
+        onLogout={handleLogout}
+        semesters={semesters}
+        announcements={announcements}
+        onUpdateStudent={updateStudentInBothStates}
+      />
+    );
+  }
+
   if (currentView === 'studentDashboardPreview') {
     const student = studentInfoData.find(s => s.roll.toUpperCase() === (previewStudentRoll || '').toUpperCase());
     return student ? (
       <StudentDashboardView
         student={student}
         attendanceHistory={attendanceHistory}
-        onLogout={() => setCurrentView('studentInfo')}
+        onLogout={() => changeView('studentInfo')}
         isAdminPreview={true}
         onUpdateStudent={updateStudentInBothStates}
         courses={courses}
@@ -446,7 +556,7 @@ const App = () => {
     ) : (
       <div className="p-8 text-center text-red-500 font-bold font-['Times_New_Roman',_serif] min-h-screen bg-gray-50 flex flex-col items-center justify-center space-y-4">
         <div>Student record not found.</div>
-        <button onClick={() => setCurrentView('studentInfo')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all">
+        <button onClick={() => changeView('studentInfo')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all">
           Return to Student Info
         </button>
       </div>
@@ -459,7 +569,7 @@ const App = () => {
       <ParentDashboardView
         student={student}
         attendanceHistory={attendanceHistory}
-        onLogout={() => setCurrentView('studentInfo')}
+        onLogout={() => changeView('studentInfo')}
         isAdminPreview={true}
         onUpdateStudent={updateStudentInBothStates}
         courses={courses}
@@ -469,7 +579,7 @@ const App = () => {
     ) : (
       <div className="p-8 text-center text-red-500 font-bold font-['Times_New_Roman',_serif] min-h-screen bg-gray-50 flex flex-col items-center justify-center space-y-4">
         <div>Associated student record not found.</div>
-        <button onClick={() => setCurrentView('studentInfo')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all">
+        <button onClick={() => changeView('studentInfo')} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all">
           Return to Student Info
         </button>
       </div>
@@ -491,6 +601,23 @@ const App = () => {
       }
     }
 
+    if (userRole === 'teamLead') {
+      const restrictedViewsForTeamLead = ['dailyMarking', 'crtMarking', 'crtLog', 'adminSettings', 'dashboard', 'studentDashboardPreview', 'parentDashboardPreview', 'parentDetails'];
+      if (restrictedViewsForTeamLead.includes(currentView)) {
+        return (
+          <StudentInfoView
+            studentInfoData={studentInfoData}
+            setStudentInfoData={setStudentInfoData}
+            directAccess={false}
+            userRole={userRole}
+            isReadOnly={true}
+            onNavigateToClassMembers={() => changeView('classMembers')}
+            filters={studentInfoFilters}
+          />
+        );
+      }
+    }
+
     switch (currentView) {
       case 'dashboard':
         return (
@@ -505,7 +632,8 @@ const App = () => {
             semesters={semesters}
             userRole={userRole}
             adminUsername={adminUsername}
-            setCurrentView={setCurrentView}
+            setCurrentView={changeView}
+            changeView={changeView}
           />
         );
       case 'dailyMarking':
@@ -522,7 +650,9 @@ const App = () => {
           <ClassMembersView
             students={students}
             setStudents={setStudents}
-            directAccess={directAccess}
+            directAccess={directAccess && userRole !== 'teamLead'}
+            userRole={userRole}
+            isReadOnly={userRole === 'teamLead'}
           />
         );
       case 'dailyLog':
@@ -531,8 +661,8 @@ const App = () => {
             attendanceHistory={attendanceHistory}
             setAttendanceHistory={setAttendanceHistory}
             onSelectReport={handleSelectReport}
-            userRole="admin"
-            directAccess={directAccess}
+            userRole={userRole}
+            directAccess={directAccess && userRole !== 'teamLead'}
           />
         );
       case 'printReport':
@@ -577,11 +707,27 @@ const App = () => {
         );
       case 'backlogs':
         return (
-          <BacklogsView students={students} setStudents={setStudents} semesters={semesters} setSemesters={setSemesters} directAccess={directAccess} />
+          <BacklogsView
+            students={students}
+            setStudents={setStudents}
+            semesters={semesters}
+            setSemesters={setSemesters}
+            directAccess={directAccess && userRole !== 'teamLead'}
+            userRole={userRole}
+            isReadOnly={userRole === 'teamLead'}
+          />
         );
       case 'subjectWise':
         return (
-          <SubjectWiseView students={students} setStudents={setStudents} semesters={semesters} setSemesters={setSemesters} directAccess={directAccess} />
+          <SubjectWiseView
+            students={students}
+            setStudents={setStudents}
+            semesters={semesters}
+            setSemesters={setSemesters}
+            directAccess={directAccess && userRole !== 'teamLead'}
+            userRole={userRole}
+            isReadOnly={userRole === 'teamLead'}
+          />
         );
       case 'adminSettings':
         return (
@@ -610,17 +756,21 @@ const App = () => {
           <StudentInfoView
             studentInfoData={studentInfoData}
             setStudentInfoData={setStudentInfoData}
-            directAccess={directAccess}
+            directAccess={directAccess && userRole !== 'teamLead'}
             userRole={userRole}
-            onNavigateToClassMembers={() => setCurrentView('classMembers')}
+            isReadOnly={userRole === 'teamLead'}
+            onNavigateToClassMembers={() => changeView('classMembers')}
             onViewStudentDashboard={(roll) => {
+              if (userRole === 'teamLead') return;
               setPreviewStudentRoll(roll);
-              setCurrentView('studentDashboardPreview');
+              changeView('studentDashboardPreview');
             }}
             onViewParentDashboard={(roll) => {
+              if (userRole === 'teamLead') return;
               setPreviewStudentRoll(roll);
-              setCurrentView('parentDashboardPreview');
+              changeView('parentDashboardPreview');
             }}
+            filters={studentInfoFilters}
           />
         );
       case 'announcements':
@@ -629,7 +779,23 @@ const App = () => {
             announcements={announcements}
             setAnnouncements={setAnnouncements}
             teams={teams}
-            directAccess={directAccess}
+            directAccess={directAccess && userRole !== 'teamLead'}
+            userRole={userRole}
+            isReadOnly={userRole === 'teamLead'}
+          />
+        );
+      case 'teamLeadDashboard':
+        return (
+          <TeamLeadDashboardView
+            userRole={userRole}
+            userEmail={userEmail}
+            adminUsername={adminUsername}
+            teamStudents={studentInfoDataState}
+            attendanceHistory={attendanceHistory}
+            semesters={semesters}
+            announcements={announcements}
+            isEmbedded={true}
+            onUpdateStudent={updateStudentInBothStates}
           />
         );
       default:
@@ -646,7 +812,7 @@ const App = () => {
 
   // ── Grouped nav structure ────────────────────────────────────────────────
   const navGroups = [
-    {
+    ...(userRole !== 'teamLead' ? [{
       key: 'attendance',
       label: 'Attendance',
       icon: UserCheck,
@@ -656,14 +822,24 @@ const App = () => {
         { id: 'crtMarking',    label: 'Mark CRT Attendance',  icon: UserCheck },
         { id: 'crtLog',        label: 'CRT Attendance Log',   icon: Calendar  },
       ],
-    },
+    }] : [{
+      key: 'attendance',
+      label: 'Attendance',
+      icon: UserCheck,
+      items: [
+        { id: 'dailyLog',      label: 'Attendance Log',       icon: Calendar  },
+      ],
+    }]),
     {
       key: 'students',
       label: 'Students',
       icon: Users,
       items: [
-        { id: 'classMembers', label: 'Manage Class Members',   icon: Users },
+        { id: 'classMembers', label: userRole === 'teamLead' ? 'Team Members' : 'Manage Class Members', icon: Users },
         { id: 'studentInfo',  label: 'Student Info & ABC IDs', icon: Info  },
+        ...(userRole === 'admin' || userRole === 'classAdmin' ? [
+          { id: 'teamLeadDashboard', label: 'Team Leaders Dashboard', icon: Shield }
+        ] : []),
       ],
     },
     {
@@ -679,11 +855,11 @@ const App = () => {
 
   const topLevelItems = [
     { id: 'announcements',  label: 'Announcements', icon: Megaphone },
-    { id: 'parentDetails',  label: 'Parent Details', icon: PhoneCall },
-    ...(userRole !== 'classAdmin' ? [{ id: 'adminSettings', label: 'Admin Settings', icon: Settings }] : []),
+    ...(userRole !== 'teamLead' ? [{ id: 'parentDetails',  label: 'Parent Details', icon: PhoneCall }] : []),
+    ...(userRole !== 'classAdmin' && userRole !== 'teamLead' ? [{ id: 'adminSettings', label: 'Admin Settings', icon: Settings }] : []),
   ];
 
-  // Dashboard item (always pinned at top)
+  // Dashboard item (pinned at top for admin/classAdmin)
   const dashboardItem = { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard };
 
   // All view IDs that belong to groups
@@ -696,7 +872,7 @@ const App = () => {
 
   // Flat list for mobile nav
   const allFlatItems = [
-    dashboardItem,
+    ...(userRole !== 'teamLead' ? [dashboardItem] : []),
     ...navGroups.flatMap(g => g.items),
     ...topLevelItems,
   ].filter(item => !(userRole === 'classAdmin' && item.id === 'adminSettings'));
@@ -742,7 +918,7 @@ const App = () => {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setCurrentView(item.id)}
+                  onClick={() => changeView(item.id)}
                   className={`w-full text-left flex items-center p-2.5 rounded-lg transition-colors duration-200
                     ${isActive
                       ? 'bg-indigo-600 text-white shadow-md'
@@ -772,8 +948,17 @@ const App = () => {
             <h1 className="text-2xl font-bold text-indigo-600">AID-H Attendance Portal</h1>
           </div>
           <div className="hidden sm:flex items-center space-x-4">
-            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-pink-100 text-pink-800">
-              {userRole === 'admin' ? `SUPER ADMIN: ${adminUsername}` : `CLASS ADMIN: ${adminUsername}`}
+            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+              userRole === 'teamLead'
+                ? 'bg-amber-100 text-amber-800'
+                : 'bg-pink-100 text-pink-800'
+            }`}>
+              {userRole === 'admin'
+                ? `SUPER ADMIN: ${adminUsername}`
+                : userRole === 'teamLead'
+                  ? `TEAM LEADER: ${adminUsername} (${userTeam || ''})`
+                  : `CLASS ADMIN: ${adminUsername}`
+              }
             </span>
             <button
               onClick={handleLogout}
@@ -817,7 +1002,7 @@ const App = () => {
               <button
                 key={item.id}
                 onClick={() => {
-                  setCurrentView(item.id);
+                  changeView(item.id);
                   setMobileMenuOpen(false);
                 }}
                 className={`py-2 px-3 flex flex-col items-center text-xs font-medium rounded-lg transition-colors
@@ -839,17 +1024,19 @@ const App = () => {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Navigation</p>
 
             {/* Dashboard pinned item */}
-            <button
-              onClick={() => setCurrentView('dashboard')}
-              className={`w-full text-left flex items-center p-3 rounded-xl transition-colors duration-200 mb-2
-                ${currentView === 'dashboard'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                }`}
-            >
-              <LayoutDashboard className="w-5 h-5 mr-3" />
-              <span className="font-bold">Dashboard</span>
-            </button>
+            {userRole !== 'teamLead' && (
+              <button
+                onClick={() => changeView('dashboard')}
+                className={`w-full text-left flex items-center p-3 rounded-xl transition-colors duration-200 mb-2
+                  ${currentView === 'dashboard'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
+                  }`}
+              >
+                <LayoutDashboard className="w-5 h-5 mr-3" />
+                <span className="font-bold">Dashboard</span>
+              </button>
+            )}
 
             {/* Collapsible groups */}
             {navGroups.map(renderSidebarGroup)}
@@ -863,7 +1050,7 @@ const App = () => {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setCurrentView(item.id)}
+                    onClick={() => changeView(item.id)}
                     className={`w-full text-left flex items-center p-3 rounded-xl transition-colors duration-200
                       ${isActive
                         ? 'bg-indigo-600 text-white shadow-md'
@@ -903,7 +1090,7 @@ const App = () => {
         attendancePolicy={attendancePolicy}
         studentInfoData={studentInfoData}
         currentView={currentView}
-        setCurrentView={setCurrentView}
+        setCurrentView={changeView}
         semesters={semesters}
         courses={courses}
         setStudents={setStudents}
