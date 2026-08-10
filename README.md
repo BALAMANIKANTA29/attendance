@@ -98,32 +98,71 @@ npm run build
 
 ## 📁 Project Structure
 
+## 📁 Project Architecture & Structured File Layout
+
 ```
-├── server/
-│   ├── index.js                  # Express REST API
-│   ├── db.js                     # SQLite database connection
-│   ├── seed.js                   # Initial data seeding script
-│   ├── package.json              # Backend configuration
-│   └── data/                     # Backend data assets
-├── src/
-│   ├── components/
-│   │   ├── BacklogsView.jsx          # Backlog management
-│   │   ├── SubjectWiseView.jsx       # Subject analytics
-│   │   ├── DailyMarkingView.jsx      # Attendance marking
-│   │   ├── ParentDetailsView.jsx     # Contact management
-│   │   ├── StudentInfoView.jsx       # ABC ID tracking
-│   │   ├── PrintReportView.jsx       # PDF report printing
-│   │   └── LoginView.jsx             # Admin portal entry
-│   ├── hooks/
-│   │   └── useLocalStorage.js        # Local storage persistence
-│   ├── data/
-│   │   └── studentInfoData.js        # Core student database
-│   ├── App.jsx                       # Main application logic
-│   └── index.css                     # Tailwind styles
-└── README.md
+smart/
+├── api/                                # Serverless API Layer (Vercel)
+│   └── index.js                        # Express server entry handling all REST endpoints & Supabase queries
+│
+├── server/                             # Backend Server & Cloud Seeding Layer
+│   ├── index.js                        # Local Express dev server (mounts api/index.js)
+│   ├── db.js                           # SQLite database connection & schema fallback
+│   ├── backlog_data.js                 # Semester backlog mapping (s11..s31) for active students
+│   ├── seed.js                         # Local SQLite initial seeding script
+│   ├── supabaseSeed.js                 # Supabase Cloud Database seeding script
+│   └── package.json                    # Backend dependencies
+│
+├── src/                                # React Frontend Application Layer
+│   ├── App.jsx                         # Main Application Container, State & Navigation Router
+│   ├── main.jsx                        # React Root Entry Point
+│   ├── index.css                       # Global Tailwind CSS Styles & Custom Print Media Queries
+│   │
+│   ├── components/                     # Component Modules
+│   │   ├── AdminDashboardView.jsx      # Super Admin System Overview Dashboard
+│   │   ├── AdminSettingsView.jsx       # Admin Policy & Global Data Management View
+│   │   ├── AnnouncementsView.jsx       # Student & Parent Announcement Feed Component
+│   │   ├── BacklogsView.jsx            # Semester-wise Backlog Details & Student Analytics
+│   │   ├── ChatBot.jsx                 # AI Assistant / Student Help Bot
+│   │   ├── ClassMembersView.jsx        # Class Roll Roster & Student Profiles
+│   │   ├── DailyAttendanceLogView.jsx  # Historical Daily Attendance Logs & Filters
+│   │   ├── DailyMarkingView.jsx        # Daily Class Attendance Marking Matrix
+│   │   ├── DashboardView.jsx           # Overview Dashboard View
+│   │   ├── LoginView.jsx               # Multi-Role Authentication Portal (Admin/ClassAdmin/TeamLead)
+│   │   ├── ParentDashboardView.jsx     # Parent Access Dashboard View
+│   │   ├── ParentDetailsView.jsx       # Parent Contact Database & Directory
+│   │   ├── PrintReportView.jsx         # Professional Printable Attendance Sheet & PDF Exporter
+│   │   ├── StudentAttendanceReport.jsx # Individual Student Attendance Report Component
+│   │   ├── StudentDashboardView.jsx    # Student Personal Dashboard View
+│   │   ├── StudentInfoView.jsx         # Student Details, ABC IDs & Laptop Tracking View
+│   │   ├── SubjectWiseView.jsx         # Subject-wise Backlog Distribution & Modal View
+│   │   └── TeamLeadDashboardView.jsx   # Team Leader Attendance & Team Analytics View
+│   │
+│   ├── data/                           # Data Models & Initial Default Datasets
+│   │   ├── crtStudentData.js           # CRT Training Student Roster Data
+│   │   └── studentInfoData.js          # Core Student Master Dataset (56 Students, Teams, Contact & Backlogs)
+│   │
+│   ├── hooks/                          # Custom React Hooks
+│   │   └── useLocalStorage.js          # React Hook syncing local state with Supabase API & LocalStorage
+│   │
+│   ├── lib/                            # External Libraries & Database Clients
+│   │   └── supabase.js                 # Supabase Cloud Client & CRUD API Helper Functions
+│   │
+│   └── utils/                          # Utility Helper Functions
+│       └── dateUtils.js                # Date Formatting & Timezone Helpers
+│
+├── .env                                # Local Environment Variables (Supabase Keys)
+├── .env.example                        # Environment Variable Configuration Template
+├── supabase_schema.sql                 # Supabase PostgreSQL Database Schema & RLS Policies
+├── vercel.json                         # Vercel Deployment & Route Rewrite Configuration
+├── vite.config.js                      # Vite Bundler & Development Server Settings
+├── tailwind.config.js                  # Tailwind CSS Design System Theme Configuration
+├── postcss.config.js                   # PostCSS Plugins Configuration
+├── package.json                        # Root Dependencies & NPM Scripts
+└── README.md                           # Project Documentation
 ```
 
 ---
 
-**Last Updated:** April 2026  
-**Status:** ✅ Production Ready  
+**Last Updated:** August 2026  
+**Status:** ✅ Cloud Ready & Supabase Connected  
