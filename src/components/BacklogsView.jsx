@@ -178,7 +178,24 @@ const EditBacklogModal = ({ student, semesters, onSave, onClose, directAccess })
     }, [form, semesters]);
 
     const handleSave = () => {
-        onSave({ ...student, id, name, ...form, backlogCount: computedCount });
+        // Build the combined backlog subjects string from all semesters
+        const allSubs = semesters
+            .filter(sem => sem.type !== 'detail')
+            .map(sem => form[sem.key] || '')
+            .filter(val => val.trim() !== '' && val.trim() !== '-')
+            .join(',')
+            .replace(/,+/g, ',')
+            .replace(/^,|,$/g, '');
+            
+        onSave({ 
+            ...student, 
+            id, 
+            name, 
+            ...form, 
+            backlogCount: computedCount,
+            backlogs: computedCount,
+            backlogSubs: allSubs
+        });
     };
 
     return (

@@ -1,10 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-dotenv.config();
 
-// Read credentials from environment variables or process.env fallback
-const supabaseUrl = (typeof process !== 'undefined' && process.env?.SUPABASE_URL) || (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_URL) || (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_URL) || '';
-const supabaseAnonKey = (typeof process !== 'undefined' && process.env?.SUPABASE_SERVICE_ROLE_KEY) || (typeof process !== 'undefined' && process.env?.SUPABASE_ANON_KEY) || (typeof process !== 'undefined' && process.env?.VITE_SUPABASE_ANON_KEY) || (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_ANON_KEY) || '';
+// Works in both Vite/browser (import.meta.env) and Node.js/server (process.env)
+const getEnv = (key) => {
+  // Browser (Vite): VITE_* vars are embedded via import.meta.env
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    const val = import.meta.env[key];
+    if (val) return val;
+  }
+  // Node.js server / API
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key] || process.env[key.replace('VITE_', '')] || '';
+  }
+  return '';
+};
+
+const supabaseUrl = getEnv('VITE_SUPABASE_URL');
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http'));
 

@@ -219,10 +219,8 @@ const App = () => {
       if (!defaults) return stored;
 
       const patch = {};
-      if (stored.team !== defaults.team) patch.team = defaults.team;
-      if (stored.cls !== defaults.cls) patch.cls = defaults.cls;
-      if (stored.room !== defaults.room) patch.room = defaults.room;
-      if (stored.name !== defaults.name) patch.name = defaults.name;
+      // NOTE: Do NOT overwrite name/team/cls/room here — the admin may have
+      // intentionally changed these. Only fill in truly MISSING (empty/null) fields.
 
       Object.keys(defaults).forEach(field => {
         if (stored[field] === undefined || stored[field] === null || stored[field] === '') {
@@ -251,7 +249,9 @@ const App = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
   const [courses, setCourses] = useState([]);
+
 
   const getApiUrl = () => {
     if (typeof window !== 'undefined') {
@@ -312,8 +312,8 @@ const App = () => {
         s31: (s.s31 && String(s.s31).trim() !== '') ? s.s31 : (defaults.s31 || ''),
         backlogs: (s.backlogs !== undefined && s.backlogs !== null && Number(s.backlogs) > 0) ? Number(s.backlogs) : (defaults.backlogs || 0),
         backlogSubs: (s.backlogSubs && String(s.backlogSubs).trim() !== '') ? s.backlogSubs : (defaults.backlogSubs || ''),
-        name: defaults.name || s.name,
-        team: defaults.team || s.team,
+        name: s.name || defaults.name,
+        team: s.team || defaults.team,
         village: (s.village && s.village.trim() !== '') ? s.village : (defaults.village || ''),
         mandal: (s.mandal && s.mandal.trim() !== '') ? s.mandal : (defaults.mandal || ''),
         district: (s.district && s.district.trim() !== '') ? s.district : (defaults.district || ''),

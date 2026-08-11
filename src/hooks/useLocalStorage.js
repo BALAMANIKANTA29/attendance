@@ -1,123 +1,96 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { 
+  isSupabaseConfigured, 
+  upsertSupabaseSettings, 
+  fetchSupabaseSettings,
+  upsertSupabaseStudents,
+  fetchSupabaseStudents
+} from '../lib/supabase';
 
-const getApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    const { hostname, protocol } = window.location;
-    
-    // If running on Vercel, use relative api route
-    if (hostname.includes('vercel.app')) {
-      return '/api';
-    }
-    
-    // If accessed on localhost, relative '/api' goes through Vite proxy
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return '/api';
-    }
-    
-    // If accessed from other devices via IP (e.g. 192.168.x.x), connect directly to the Express backend port 3001
-    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
-      return `${protocol}//${hostname}:3001/api`;
-    }
-    
-    return '/api';
-  }
-  return 'http://localhost:3001/api';
-};
-
-const API_URL = getApiUrl();
+// Default owner email when no user is logged in yet
+const DEFAULT_OWNER = 'k12aidha@example.com';
 
 /**
- * useLocalStorage Bridge Hook
- * This hook maintains the SAME interface as the original version but 
- * secretly synchronizes all data with the SQLite database.
+ * useLocalStorage — now purely Supabase-backed.
+ * localStorage has been removed. Supabase is the single source of truth.
+ *
+ * Behaviour:
+ *  - React state  → instant UI updates (in-memory)
+ *  - Supabase     → persistent cloud storage (read on mount, write on every change)
+ *  - No localStorage, no SQLite
  */
 export const useLocalStorage = (key, initialValue, userEmail) => {
-  // 1. Initial State from LocalStorage (for speed)
-  const [storedValue, setStoredValue] = useState(() => {
-    try {
-      const storageKey = userEmail ? `${userEmail}:${key}` : key;
-      const item = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null;
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.error(`Error reading from localStorage for key "${key}":`, error);
-      return initialValue;
-    }
-  });
+  const [storedValue, setStoredValue] = useState(initialValue);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const saveTimerRef = useRef(null);
 
-  // 2. Load namespaced data when userEmail changes
+  const ownerEmail = userEmail || DEFAULT_OWNER;
+
+  // ── Load from Supabase on mount / userEmail change ──────────────────────
   useEffect(() => {
-    try {
-      const storageKey = userEmail ? `${userEmail}:${key}` : key;
-      const item = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null;
-      setStoredValue(item ? JSON.parse(item) : initialValue);
-    } catch (error) {
-      console.error(`Error reloading from localStorage for key "${key}":`, error);
-      setStoredValue(initialValue);
+    if (!isSupabaseConfigured) {
+      setIsLoaded(true);
+      return;
     }
-  }, [key, userEmail]);
 
-  // 3. Background Sync from Database on Mount / email change
-  useEffect(() => {
-    const syncEmail = userEmail || 'k12aidha@example.com';
+    setIsLoaded(false);
 
-    const syncWithDb = async () => {
+    const loadData = async () => {
       try {
-        const res = await fetch(`${API_URL}/settings/${key}`, {
-          headers: {
-            'x-user-email': syncEmail
-          }
-        });
-        if (!res.ok) return;
+        let cloudValue;
         
-        const dbValue = await res.json();
-        
-        if (dbValue !== null && dbValue !== undefined) {
-          if (Array.isArray(dbValue) && dbValue.length === 0) {
-            // keep stored value if DB returns empty array
-          } else {
-            setStoredValue(dbValue);
-            const storageKey = userEmail ? `${userEmail}:${key}` : key;
-            if (typeof window !== 'undefined') {
-              window.localStorage.setItem(storageKey, JSON.stringify(dbValue));
-            }
+        if (key === 'studentInfoData') {
+          cloudValue = await fetchSupabaseStudents(ownerEmail);
+        } else {
+          cloudValue = await fetchSupabaseSettings(ownerEmail, key);
+        }
+
+        if (cloudValue !== null && cloudValue !== undefined) {
+          const isEmpty = Array.isArray(cloudValue) && cloudValue.length === 0;
+          if (!isEmpty) {
+            setStoredValue(cloudValue);
           }
         }
       } catch (err) {
-        console.warn(`Database sync failed for ${key}, falling back to local:`, err);
+        console.warn(`[Supabase] Load failed for "${key}":`, err);
+      } finally {
+        setIsLoaded(true);
       }
     };
-    
-    syncWithDb();
-  }, [key, userEmail]);
 
-  // 4. Save to BOTH LocalStorage and Database
+    loadData();
+  }, [key, ownerEmail]);
+
+  // ── Save to Supabase on every value change ──────────────────────────────
   const setValue = (value) => {
     try {
       const valueToStore = value instanceof Function ? value(storedValue) : value;
-      
-      // Update local state
+
+      // Update React state immediately so the UI feels instant
       setStoredValue(valueToStore);
-      
-      // Update local storage
-      const storageKey = userEmail ? `${userEmail}:${key}` : key;
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(storageKey, JSON.stringify(valueToStore));
-      }
-      
-      // Update database if authenticated (fire and forget)
-      if (userEmail) {
-        fetch(`${API_URL}/settings/${key}`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-user-email': userEmail
-          },
-          body: JSON.stringify(valueToStore),
-        }).catch(err => console.error(`DB save failed for ${key}:`, err));
-      }
+
+      if (!isSupabaseConfigured) return;
+
+      // Debounce rapid successive saves (e.g. typing) to avoid flooding Supabase
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        if (key === 'studentInfoData') {
+          upsertSupabaseStudents(ownerEmail, valueToStore)
+            .then(ok => {
+              if (!ok) console.warn(`[Supabase] Save failed for "${key}"`);
+            })
+            .catch(err => console.warn(`[Supabase] Save error for "${key}":`, err));
+        } else {
+          upsertSupabaseSettings(ownerEmail, key, valueToStore)
+            .then(ok => {
+              if (!ok) console.warn(`[Supabase] Save failed for "${key}"`);
+            })
+            .catch(err => console.warn(`[Supabase] Save error for "${key}":`, err));
+        }
+      }, 300); // 300ms debounce
 
     } catch (error) {
-      console.error(`Error writing to storage for key "${key}":`, error);
+      console.error(`Error saving "${key}":`, error);
     }
   };
 
