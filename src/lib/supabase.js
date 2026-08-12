@@ -1,21 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Works in both Vite/browser (import.meta.env) and Node.js/server (process.env)
-const getEnv = (key) => {
-  // Browser (Vite): VITE_* vars are embedded via import.meta.env
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    const val = import.meta.env[key];
-    if (val) return val;
-  }
-  // Node.js server / API
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env[key] || process.env[key.replace('VITE_', '')] || '';
-  }
-  return '';
-};
+// Vite requires static access to import.meta.env variables for production replacement.
+// Dynamic access like import.meta.env[key] works in dev but fails in production build.
+let viteSupabaseUrl = '';
+let viteSupabaseAnonKey = '';
+if (typeof import.meta !== 'undefined' && import.meta.env) {
+  viteSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+  viteSupabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+}
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL');
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
+// Node.js server / API (Vercel Serverless Functions)
+let nodeSupabaseUrl = '';
+let nodeSupabaseAnonKey = '';
+if (typeof process !== 'undefined' && process.env) {
+  nodeSupabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+  nodeSupabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+}
+
+const supabaseUrl = viteSupabaseUrl || nodeSupabaseUrl;
+const supabaseAnonKey = viteSupabaseAnonKey || nodeSupabaseAnonKey;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http'));
 
