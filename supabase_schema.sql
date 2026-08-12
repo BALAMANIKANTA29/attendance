@@ -95,23 +95,52 @@ ALTER TABLE public.semesters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 
 -- Permissive public policies for API/web application access
+DROP POLICY IF EXISTS "Allow public read access on students" ON public.students;
 CREATE POLICY "Allow public read access on students" ON public.students FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public insert access on students" ON public.students;
 CREATE POLICY "Allow public insert access on students" ON public.students FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public update access on students" ON public.students;
 CREATE POLICY "Allow public update access on students" ON public.students FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Allow public delete access on students" ON public.students;
 CREATE POLICY "Allow public delete access on students" ON public.students FOR DELETE USING (true);
 
+DROP POLICY IF EXISTS "Allow public read access on attendance_history" ON public.attendance_history;
 CREATE POLICY "Allow public read access on attendance_history" ON public.attendance_history FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public insert access on attendance_history" ON public.attendance_history;
 CREATE POLICY "Allow public insert access on attendance_history" ON public.attendance_history FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public delete access on attendance_history" ON public.attendance_history;
+CREATE POLICY "Allow public delete access on attendance_history" ON public.attendance_history FOR DELETE USING (true);
 
+DROP POLICY IF EXISTS "Allow public read access on settings" ON public.settings;
 CREATE POLICY "Allow public read access on settings" ON public.settings FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public insert access on settings" ON public.settings;
 CREATE POLICY "Allow public insert access on settings" ON public.settings FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public update access on settings" ON public.settings;
 CREATE POLICY "Allow public update access on settings" ON public.settings FOR UPDATE USING (true);
 
+DROP POLICY IF EXISTS "Allow public read access on courses" ON public.courses;
 CREATE POLICY "Allow public read access on courses" ON public.courses FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public insert access on courses" ON public.courses;
 CREATE POLICY "Allow public insert access on courses" ON public.courses FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public update access on courses" ON public.courses;
+CREATE POLICY "Allow public update access on courses" ON public.courses FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Allow public delete access on courses" ON public.courses;
+CREATE POLICY "Allow public delete access on courses" ON public.courses FOR DELETE USING (true);
 
+DROP POLICY IF EXISTS "Allow public read access on semesters" ON public.semesters;
 CREATE POLICY "Allow public read access on semesters" ON public.semesters FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public insert access on semesters" ON public.semesters;
 CREATE POLICY "Allow public insert access on semesters" ON public.semesters FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public update access on semesters" ON public.semesters;
+CREATE POLICY "Allow public update access on semesters" ON public.semesters FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Allow public delete access on semesters" ON public.semesters;
+CREATE POLICY "Allow public delete access on semesters" ON public.semesters FOR DELETE USING (true);
 
+DROP POLICY IF EXISTS "Allow public read access on announcements" ON public.announcements;
 CREATE POLICY "Allow public read access on announcements" ON public.announcements FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public insert access on announcements" ON public.announcements;
 CREATE POLICY "Allow public insert access on announcements" ON public.announcements FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public update access on announcements" ON public.announcements;
+CREATE POLICY "Allow public update access on announcements" ON public.announcements FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Allow public delete access on announcements" ON public.announcements;
+CREATE POLICY "Allow public delete access on announcements" ON public.announcements FOR DELETE USING (true);
