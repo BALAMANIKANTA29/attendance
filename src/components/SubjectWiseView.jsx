@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { BarChart2, Download, BookMarked, X, User, ChevronRight, Plus, Trash2, Edit2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getLocalDateString } from '../utils/dateUtils';
+import { isSupabaseConfigured, updateSupabaseStudent } from '../lib/supabase';
 
 const DEFAULT_SEMESTERS = [
     { key: 's11', label: 'Semester 1-1', short: '1-1', color: 'indigo' },
@@ -36,10 +37,11 @@ const COLOR_MAP = {
 };
 
 // Modal showing all students who failed a specific subject
-const StudentListModal = ({ subject, students, setStudents, semesters, onClose, directAccess }) => {
+const StudentListModal = ({ subject, students, setStudents, semesters, onClose, directAccess, userEmail }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [selectedStudentId, setSelectedStudentId] = useState('');
     const [selectedSemKey, setSelectedSemKey] = useState(semesters[0]?.key || '');
+    const [saving, setSaving] = useState(false);
 
     if (!subject) return null;
 
@@ -61,12 +63,19 @@ const StudentListModal = ({ subject, students, setStudents, semesters, onClose, 
         return result;
     }, [subject, students, semesters]);
 
-    const handleRemoveSubject = (studentId, semKey) => {
+    const handleRemoveSubject = async (studentId, semKey) => {
         if (!window.confirm(`Remove ${subject} from ${studentId} in ${semKey}?`)) return;
+        if (!isSupabaseConfigured) {
+            alert("Database is not configured.");
+            return;
+        }
 
-        setStudents(prev => prev.map(s => {
-            if (s.id !== studentId) return s;
-            const currentSubs = s[semKey] || '';
+        const student = students.find(s => s.id === studentId);
+        if (!student) return;
+
+        setSaving(true);
+        try {
+            const currentSubs = student[semKey] || '';
             const updatedSubs = currentSubs.split(',')
                 .map(x => x.trim())
                 .filter(x => x !== subject)
@@ -76,38 +85,64 @@ const StudentListModal = ({ subject, students, setStudents, semesters, onClose, 
             const allSemKeys = semesters.map(sem => sem.key);
             let total = 0;
             allSemKeys.forEach(k => {
-                const val = (k === semKey ? updatedSubs : s[k]) || '';
+                const val = (k === semKey ? updatedSubs : student[k]) || '';
                 total += val.split(',').filter(x => x.trim()).length;
             });
 
-            return { ...s, [semKey]: updatedSubs, backlogCount: total };
-        }));
+            const updatedStudent = { ...student, [semKey]: updatedSubs, backlogCount: total };
+            const ownerEmail = userEmail || 'k12aidha@example.com';
+            const savedStudent = await updateSupabaseStudent(ownerEmail, student.roll || student.id, updatedStudent);
+
+            setStudents(prev => prev.map(s => s.id === studentId ? savedStudent : s));
+        } catch (err) {
+            alert("Failed to remove subject: " + err.message);
+        } finally {
+            if (document.body.contains(document.getElementById('subject-list-modal'))) {
+                setSaving(false);
+            }
+        }
     };
 
-    const handleAddStudentSubject = () => {
+    const handleAddStudentSubject = async () => {
         if (!selectedStudentId || !selectedSemKey) return;
+        if (!isSupabaseConfigured) {
+            alert("Database is not configured.");
+            return;
+        }
 
-        setStudents(prev => prev.map(s => {
-            if (s.id !== selectedStudentId) return s;
-            const currentSubs = s[selectedSemKey] || '';
-            const subsArray = currentSubs.split(',').map(x => x.trim()).filter(Boolean);
-            if (subsArray.includes(subject)) return s;
+        const student = students.find(s => s.id === selectedStudentId);
+        if (!student) return;
 
+        const currentSubs = student[selectedSemKey] || '';
+        const subsArray = currentSubs.split(',').map(x => x.trim()).filter(Boolean);
+        if (subsArray.includes(subject)) return;
+
+        setSaving(true);
+        try {
             const updatedSubs = [...subsArray, subject].join(',');
 
             // Recalculate backlogCount
             const allSemKeys = semesters.map(sem => sem.key);
             let total = 0;
             allSemKeys.forEach(k => {
-                const val = (k === selectedSemKey ? updatedSubs : s[k]) || '';
+                const val = (k === selectedSemKey ? updatedSubs : student[k]) || '';
                 total += val.split(',').filter(x => x.trim()).length;
             });
 
-            return { ...s, [selectedSemKey]: updatedSubs, backlogCount: total };
-        }));
+            const updatedStudent = { ...student, [selectedSemKey]: updatedSubs, backlogCount: total };
+            const ownerEmail = userEmail || 'k12aidha@example.com';
+            const savedStudent = await updateSupabaseStudent(ownerEmail, student.roll || student.id, updatedStudent);
 
-        setIsAdding(false);
-        setSelectedStudentId('');
+            setStudents(prev => prev.map(s => s.id === selectedStudentId ? savedStudent : s));
+            setIsAdding(false);
+            setSelectedStudentId('');
+        } catch (err) {
+            alert("Failed to add student: " + err.message);
+        } finally {
+            if (document.body.contains(document.getElementById('subject-list-modal'))) {
+                setSaving(false);
+            }
+        }
     };
 
     const exportToExcel = () => {
@@ -128,8 +163,19 @@ const StudentListModal = ({ subject, students, setStudents, semesters, onClose, 
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-fade-in">
+        <div id="subject-list-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-fade-in relative">
+                {saving && (
+                    <div className="absolute inset-0 z-10 bg-white/50 backdrop-blur-[2px] flex items-center justify-center rounded-2xl">
+                        <div className="bg-white px-4 py-2 shadow-lg rounded-full text-indigo-700 font-bold text-sm flex items-center gap-2">
+                            <svg className="animate-spin h-4 w-4 text-indigo-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Saving...
+                        </div>
+                    </div>
+                )}
                 {/* Modal Header */}
                 <div className="flex items-center justify-between px-6 py-4 bg-indigo-600 rounded-t-2xl">
                     <div>
@@ -285,7 +331,7 @@ const StudentListModal = ({ subject, students, setStudents, semesters, onClose, 
     );
 };
 
-export const SubjectWiseView = ({ students, setStudents, semesters: propSemesters, directAccess }) => {
+export const SubjectWiseView = ({ students, setStudents, semesters: propSemesters, directAccess, userEmail }) => {
     const SEMESTERS = normalizeSemesters(propSemesters || DEFAULT_SEMESTERS);
     const [activeSem, setActiveSem] = useState('all');
     const [selectedSubject, setSelectedSubject] = useState(null);
@@ -391,6 +437,7 @@ export const SubjectWiseView = ({ students, setStudents, semesters: propSemester
                     semesters={SEMESTERS}
                     onClose={() => setSelectedSubject(null)}
                     directAccess={directAccess}
+                    userEmail={userEmail}
                 />
             )}
 

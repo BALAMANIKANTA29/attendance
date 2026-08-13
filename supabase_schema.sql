@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS public.students (
     s21 TEXT,
     s22 TEXT,
     s31 TEXT,
+    s32 TEXT,
+    s41 TEXT,
+    s42 TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     CONSTRAINT unique_owner_roll UNIQUE (owner_email, roll)

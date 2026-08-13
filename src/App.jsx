@@ -71,11 +71,7 @@ const App = () => {
     backlogs:   false,
   });
 
-  const [studentsState, setStudentsState] = useLocalStorage('students', defaultStudentInfoData.map(s => ({
-    id: s.roll,
-    name: s.name,
-    status: null
-  })), userEmail);
+  const [studentsState, setStudentsState] = useLocalStorage('students', [], userEmail);
 
 
 
@@ -182,72 +178,10 @@ const App = () => {
     semesterEndMonth: 6
   }, userEmail);
 
-  const [studentInfoDataState, setStudentInfoDataState] = useLocalStorage('studentInfoData', defaultStudentInfoData, userEmail);
+  const [studentInfoDataState, setStudentInfoDataState] = useLocalStorage('studentInfoData', [], userEmail);
 
-  // Migration: merge ALL missing/empty fields from defaultStudentInfoData into cached localStorage records.
-  // Also converts legacy `backlogSubs` field into per-semester `s31` field for dashboard display,
-  // and syncs any missing default students into studentInfoDataState and studentsState.
-  React.useEffect(() => {
-    const existingInfoRolls = new Set((studentInfoDataState || []).map(s => (s.roll || s.id || '').toUpperCase()));
-    const missingInfo = defaultStudentInfoData.filter(d => !existingInfoRolls.has(d.roll.toUpperCase()));
-    
-    const existingStudentRolls = new Set((studentsState || []).map(s => (s.id || s.roll || '').toUpperCase()));
-    const missingStudents = defaultStudentInfoData.filter(d => !existingStudentRolls.has(d.roll.toUpperCase()));
-
-    if (missingStudents.length > 0) {
-      setStudentsState(prev => [
-        ...prev,
-        ...missingStudents.map(m => ({ id: m.roll, name: m.name, status: null }))
-      ]);
-    }
-
-    const userEditableFields = new Set(['status', 'abcId', 'email', 'phone', 'project', 'club', 'laptop',
-      'parentName', 'p1', 'p2', 's11', 's12', 's21', 's22', 's31', 'backlogs']);
-    const semFields = ['s11', 's12', 's21', 's22', 's31'];
-
-    let changed = false;
-    let baseList = studentInfoDataState;
-    if (missingInfo.length > 0) {
-      baseList = [...studentInfoDataState, ...missingInfo];
-      changed = true;
-    }
-
-    const migrated = baseList.map(stored => {
-      const defaults = defaultStudentInfoData.find(
-        d => d.roll.toUpperCase() === (stored.roll || stored.id || '').toUpperCase()
-      );
-      if (!defaults) return stored;
-
-      const patch = {};
-      // NOTE: Do NOT overwrite name/team/cls/room here — the admin may have
-      // intentionally changed these. Only fill in truly MISSING (empty/null) fields.
-
-      Object.keys(defaults).forEach(field => {
-        if (stored[field] === undefined || stored[field] === null || stored[field] === '') {
-          if (defaults[field] !== undefined && defaults[field] !== null && defaults[field] !== '') {
-            patch[field] = defaults[field];
-          }
-        }
-      });
-
-      const allSemEmpty = semFields.every(k => !stored[k] || String(stored[k]).trim() === '');
-      if (allSemEmpty && defaults.backlogSubs && defaults.backlogSubs.trim() !== '') {
-        patch.s31 = defaults.backlogSubs;
-        patch.backlogs = defaults.backlogSubs.split(',').filter(s => s.trim()).length;
-      }
-
-      if (Object.keys(patch).length > 0) {
-        changed = true;
-        return { ...stored, ...patch };
-      }
-      return stored;
-    });
-
-    if (changed) {
-      setStudentInfoDataState(migrated);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Default data migration logic has been removed.
+  // Supabase is the single source of truth.
 
 
   const [courses, setCourses] = useState([]);
@@ -293,34 +227,9 @@ const App = () => {
   }, [userEmail]);
 
   const studentInfoData = React.useMemo(() => {
-    const rawList = (studentInfoDataState && studentInfoDataState.length > 0)
+    const sourceList = (studentInfoDataState && studentInfoDataState.length > 0)
       ? studentInfoDataState
-      : defaultStudentInfoData;
-
-    const sourceList = rawList.map(s => {
-      const defaults = defaultStudentInfoData.find(
-        d => d.roll.toUpperCase() === (s.roll || s.id || '').toUpperCase()
-      );
-      if (!defaults) return s;
-      return {
-        ...defaults,
-        ...s,
-        s11: (s.s11 && String(s.s11).trim() !== '') ? s.s11 : (defaults.s11 || ''),
-        s12: (s.s12 && String(s.s12).trim() !== '') ? s.s12 : (defaults.s12 || ''),
-        s21: (s.s21 && String(s.s21).trim() !== '') ? s.s21 : (defaults.s21 || ''),
-        s22: (s.s22 && String(s.s22).trim() !== '') ? s.s22 : (defaults.s22 || ''),
-        s31: (s.s31 && String(s.s31).trim() !== '') ? s.s31 : (defaults.s31 || ''),
-        backlogs: (s.backlogs !== undefined && s.backlogs !== null && Number(s.backlogs) > 0) ? Number(s.backlogs) : (defaults.backlogs || 0),
-        backlogSubs: (s.backlogSubs && String(s.backlogSubs).trim() !== '') ? s.backlogSubs : (defaults.backlogSubs || ''),
-        name: s.name || defaults.name,
-        team: s.team || defaults.team,
-        village: (s.village && s.village.trim() !== '') ? s.village : (defaults.village || ''),
-        mandal: (s.mandal && s.mandal.trim() !== '') ? s.mandal : (defaults.mandal || ''),
-        district: (s.district && s.district.trim() !== '') ? s.district : (defaults.district || ''),
-        state: (s.state && s.state.trim() !== '') ? s.state : (defaults.state || 'Andhra Pradesh'),
-        pincode: (s.pincode && String(s.pincode).trim() !== '') ? s.pincode : (defaults.pincode || ''),
-      };
-    });
+      : [];
 
     const orderedList = sortStudentsByTeamOrder(sourceList);
 
@@ -340,15 +249,15 @@ const App = () => {
   }, [studentInfoDataState, userRole, userTeam, adminUsername]);
 
   const students = React.useMemo(() => {
-    let list = studentsState;
+    let list = studentsState || [];
     if (userRole === 'teamLead' && userTeam) {
       const teamRolls = new Set(studentInfoData.map(s => (s.roll || s.id || '').toUpperCase()));
-      list = studentsState.filter(st => teamRolls.has((st.id || st.roll || '').toUpperCase()));
+      list = list.filter(st => teamRolls.has((st.id || st.roll || '').toUpperCase()));
     }
     const syncedList = list.map(st => {
-      const def = defaultStudentInfoData.find(d => d.roll.toUpperCase() === (st.id || st.roll || '').toUpperCase());
+      const def = (studentInfoDataState || []).find(info => (info.roll || info.id || '').toUpperCase() === (st.id || st.roll || '').toUpperCase());
       if (def) {
-        return { ...st, name: def.name };
+        return { ...st, ...def, name: def.name, id: st.id || st.roll };
       }
       return st;
     });
@@ -776,6 +685,7 @@ const App = () => {
             setSemesters={setSemesters}
             directAccess={directAccess && userRole !== 'teamLead'}
             userRole={userRole}
+            userEmail={userEmail}
             isReadOnly={userRole === 'teamLead'}
           />
         );
@@ -788,6 +698,7 @@ const App = () => {
             setSemesters={setSemesters}
             directAccess={directAccess && userRole !== 'teamLead'}
             userRole={userRole}
+            userEmail={userEmail}
             isReadOnly={userRole === 'teamLead'}
           />
         );
@@ -820,6 +731,7 @@ const App = () => {
             setStudentInfoData={setStudentInfoData}
             directAccess={directAccess && userRole !== 'teamLead'}
             userRole={userRole}
+            userEmail={userEmail}
             isReadOnly={userRole === 'teamLead'}
             onNavigateToClassMembers={() => changeView('classMembers')}
             onViewStudentDashboard={(roll) => {

@@ -49,6 +49,11 @@ export const useLocalStorage = (key, initialValue, userEmail) => {
           const isEmpty = Array.isArray(cloudValue) && cloudValue.length === 0;
           if (!isEmpty) {
             setStoredValue(cloudValue);
+            
+            // Per user request, remove from local storage once data is securely in Supabase
+            try {
+              window.localStorage.removeItem(`${ownerEmail}_${key}`);
+            } catch(e) {}
           }
         }
       } catch (err) {
@@ -75,11 +80,8 @@ export const useLocalStorage = (key, initialValue, userEmail) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         if (key === 'studentInfoData') {
-          upsertSupabaseStudents(ownerEmail, valueToStore)
-            .then(ok => {
-              if (!ok) console.warn(`[Supabase] Save failed for "${key}"`);
-            })
-            .catch(err => console.warn(`[Supabase] Save error for "${key}":`, err));
+          // Bulk upserts for student data are disabled to prevent overwriting
+          // targeted updates. Targeted updates are handled directly by components.
         } else {
           upsertSupabaseSettings(ownerEmail, key, valueToStore)
             .then(ok => {

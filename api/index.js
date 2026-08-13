@@ -8,6 +8,7 @@ import {
   supabase,
   fetchSupabaseStudents,
   upsertSupabaseStudents,
+  updateSupabaseStudent,
   insertSupabaseAttendance,
   fetchSupabaseAttendance,
   deleteSupabaseAttendance,
@@ -413,15 +414,8 @@ app.put('/api/students/:roll', async (req, res) => {
     }
 
     if (isSupabaseConfigured) {
-      const currentList = (await fetchSupabaseStudents(context.ownerEmail)) || [];
-      const updatedList = currentList.map(s => {
-        if ((s.roll || s.id || '').toUpperCase() === roll.toUpperCase()) {
-          return { ...s, ...data };
-        }
-        return s;
-      });
-      const ok = await upsertSupabaseStudents(context.ownerEmail, updatedList);
-      if (ok) return res.json({ success: true });
+      const savedStudent = await updateSupabaseStudent(context.ownerEmail, roll, data);
+      if (savedStudent) return res.json({ success: true });
     }
 
     if (db) {

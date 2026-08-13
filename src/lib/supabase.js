@@ -88,7 +88,10 @@ export async function upsertSupabaseStudents(ownerEmail, studentsList) {
       s12: s.s12 || '',
       s21: s.s21 || '',
       s22: s.s22 || '',
-      s31: s.s31 || ''
+      s31: s.s31 || '',
+      s32: s.s32 || '',
+      s41: s.s41 || '',
+      s42: s.s42 || ''
     }));
 
     const { error } = await supabase
@@ -103,6 +106,57 @@ export async function upsertSupabaseStudents(ownerEmail, studentsList) {
   } catch (err) {
     console.error('[Supabase] Upsert exception:', err);
     return false;
+  }
+}
+
+/**
+ * Update a single student in Supabase
+ */
+export async function updateSupabaseStudent(ownerEmail, roll, updates) {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const payload = { ...updates };
+  // Map frontend keys to DB columns
+  if (payload.parentName !== undefined) { payload.parent_name = payload.parentName; delete payload.parentName; }
+  if (payload.backlogSubs !== undefined) { payload.backlog_subs = payload.backlogSubs; delete payload.backlogSubs; }
+  if (payload.abcId !== undefined) { payload.abc_id = payload.abcId; delete payload.abcId; }
+  if (payload.backlogCount !== undefined && payload.backlogs === undefined) { payload.backlogs = payload.backlogCount; }
+  
+  delete payload.backlogCount;
+  delete payload.id;
+  delete payload.roll;
+  delete payload.owner_email;
+  delete payload.created_at; // don't try to update readonly fields
+  
+  if (payload.backlogs !== undefined) {
+    payload.backlogs = Number(payload.backlogs) || 0;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('students')
+      .update(payload)
+      .eq('owner_email', ownerEmail)
+      .eq('roll', roll)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Supabase] Update student error:', error.message);
+      throw new Error(error.message);
+    }
+
+    return {
+      ...data,
+      parentName: data.parent_name || data.parentName || '',
+      backlogSubs: data.backlog_subs || data.backlogSubs || '',
+      abcId: data.abc_id || data.abcId || '',
+      id: data.roll,
+      roll: data.roll
+    };
+  } catch (err) {
+    console.error('[Supabase] Update student exception:', err);
+    throw err;
   }
 }
 

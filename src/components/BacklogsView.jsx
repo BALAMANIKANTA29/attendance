@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { BookOpen, AlertTriangle, CheckCircle, Search, Filter, Download, Edit2, Save, X, Plus, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getLocalDateString } from '../utils/dateUtils';
+import { isSupabaseConfigured, updateSupabaseStudent } from '../lib/supabase';
 
 const DEFAULT_SEMESTERS = [
     { key: 's11', label: '1-1' },
@@ -161,8 +162,9 @@ const ColumnManagerModal = ({ semesters, onAdd, onDelete, onClose }) => {
 
 // ── Edit Backlog Modal ─────────────────────────────────────────────
 const EditBacklogModal = ({ student, semesters, onSave, onClose, directAccess }) => {
-    const [id, setId] = useState(student.id);
+    const [id, setId] = useState(student.id || student.roll);
     const [name, setName] = useState(student.name);
+    const [saving, setSaving] = useState(false);
     const [form, setForm] = useState(() => {
         const init = {};
         semesters.forEach(s => { init[s.key] = student[s.key] || ''; });
@@ -177,7 +179,8 @@ const EditBacklogModal = ({ student, semesters, onSave, onClose, directAccess })
         }, 0);
     }, [form, semesters]);
 
-    const handleSave = () => {
+    const handleSaveClick = async () => {
+        setSaving(true);
         // Build the combined backlog subjects string from all semesters
         const allSubs = semesters
             .filter(sem => sem.type !== 'detail')
@@ -187,19 +190,26 @@ const EditBacklogModal = ({ student, semesters, onSave, onClose, directAccess })
             .replace(/,+/g, ',')
             .replace(/^,|,$/g, '');
             
-        onSave({ 
-            ...student, 
-            id, 
-            name, 
-            ...form, 
-            backlogCount: computedCount,
-            backlogs: computedCount,
-            backlogSubs: allSubs
-        });
+        try {
+            await onSave({ 
+                ...student, 
+                id,
+                roll: id, // Keep roll consistent
+                name, 
+                ...form, 
+                backlogCount: computedCount,
+                backlogs: computedCount,
+                backlogSubs: allSubs
+            });
+        } finally {
+            if (document.body.contains(document.getElementById('edit-backlog-modal'))) {
+                 setSaving(false);
+            }
+        }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div id="edit-backlog-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 <div className="flex items-center justify-between px-6 py-4 bg-indigo-600 rounded-t-2xl">
                     <div>
@@ -268,8 +278,8 @@ const EditBacklogModal = ({ student, semesters, onSave, onClose, directAccess })
                     <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-1">
                         <X className="w-4 h-4" /> Cancel
                     </button>
-                    <button onClick={handleSave} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold flex items-center gap-1 transition-colors">
-                        <Save className="w-4 h-4" /> Save Changes
+                    <button onClick={handleSaveClick} disabled={saving} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg text-sm font-semibold flex items-center gap-1 transition-colors">
+                        <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Changes'}
                     </button>
                 </div>
             </div>
@@ -278,7 +288,7 @@ const EditBacklogModal = ({ student, semesters, onSave, onClose, directAccess })
 };
 
 // ── Main BacklogsView ──────────────────────────────────────────────
-export const BacklogsView = ({ students, setStudents, semesters: propSemesters, setSemesters, directAccess }) => {
+export const BacklogsView = ({ students, setStudents, semesters: propSemesters, setSemesters, directAccess, userEmail }) => {
     const semesters = propSemesters || DEFAULT_SEMESTERS;
 
     const [search, setSearch] = useState('');
@@ -386,11 +396,25 @@ export const BacklogsView = ({ students, setStudents, semesters: propSemesters, 
             .sort((a, b) => a.backlogs - b.backlogs);
     }, [studentsWithActiveCounts]);
 
-    const handleSaveEdit = (updated) => {
-        if (setStudents) {
-            setStudents(prev => prev.map(s => s.id === editingStudent.id ? updated : s));
+    const handleSaveEdit = async (updated) => {
+        if (!isSupabaseConfigured) {
+            alert("Database is not configured.");
+            return;
         }
-        setEditingStudent(null);
+        try {
+            const ownerEmail = userEmail || 'k12aidha@example.com';
+            const savedStudent = await updateSupabaseStudent(ownerEmail, updated.id || updated.roll, updated);
+            if (setStudents) {
+                setStudents(prev => prev.map(s => {
+                    const sRoll = s.roll || s.id;
+                    const targetRoll = updated.roll || updated.id;
+                    return sRoll === targetRoll ? savedStudent : s;
+                }));
+            }
+            setEditingStudent(null);
+        } catch (error) {
+            alert("Failed to save changes: " + error.message);
+        }
     };
 
     const handleDeleteStudent = (id) => {

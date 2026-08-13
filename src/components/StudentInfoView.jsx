@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Laptop, Search, Download, Mail, Hash, Users, Filter, Edit2, Save, X, Trash2, Plus, ArrowRight, MapPin } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { studentInfoData as defaultData, teams as defaultTeams } from '../data/studentInfoData';
+import { upsertSupabaseStudents, isSupabaseConfigured, updateSupabaseStudent } from '../lib/supabase';
 import { getLocalDateString } from '../utils/dateUtils';
 
 const TEAM_COLORS = [
@@ -34,10 +35,23 @@ const colorClass = (c, type) => {
 // Edit Modal
 const EditStudentModal = ({ student, teams, onSave, onClose, directAccess }) => {
     const [form, setForm] = useState({ ...student });
+    const [saving, setSaving] = useState(false);
     const set = (field, val) => setForm(prev => ({ ...prev, [field]: val }));
 
+    const handleSaveClick = async () => {
+        setSaving(true);
+        try {
+            await onSave(form);
+        } finally {
+            if (document.body.contains(document.getElementById('edit-student-modal'))) {
+                 // Check if still mounted to avoid memory leaks
+                 setSaving(false);
+            }
+        }
+    };
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div id="edit-student-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 <div className="flex items-center justify-between px-6 py-4 bg-indigo-600 rounded-t-2xl">
                     <div>
@@ -172,8 +186,8 @@ const EditStudentModal = ({ student, teams, onSave, onClose, directAccess }) => 
                     <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-1">
                         <X className="w-4 h-4" /> Cancel
                     </button>
-                    <button onClick={() => onSave(form)} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold flex items-center gap-1 transition-colors">
-                        <Save className="w-4 h-4" /> Save Changes
+                    <button onClick={handleSaveClick} disabled={saving} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg text-sm font-semibold flex items-center gap-1 transition-colors">
+                        <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save Changes'}
                     </button>
                 </div>
             </div>
@@ -188,6 +202,7 @@ export const StudentInfoView = ({
     onViewStudentDashboard,
     onViewParentDashboard,
     userRole,
+    userEmail,
     isReadOnly = false,
     onNavigateToClassMembers,
     filters,
@@ -255,17 +270,27 @@ export const StudentInfoView = ({
         });
     }, [data, search, teamFilter, laptopFilter, projectFilter, districtFilter]);
 
-    const handleSave = (updated) => {
-        if (setStudentInfoData) {
-            setStudentInfoData(prev => {
-                const index = prev.findIndex(s => s.roll === editingStudent.roll);
-                if (index === -1) return prev;
-                const newList = [...prev];
-                newList[index] = updated;
-                return newList;
-            });
+    const handleSave = async (updated) => {
+        if (!isSupabaseConfigured) {
+            alert("Database is not configured.");
+            return;
         }
-        setEditingStudent(null);
+        try {
+            const ownerEmail = userEmail || 'k12aidha@example.com';
+            const savedStudent = await updateSupabaseStudent(ownerEmail, editingStudent.roll, updated);
+            if (setStudentInfoData) {
+                setStudentInfoData(prev => {
+                    const index = prev.findIndex(s => s.roll === editingStudent.roll);
+                    if (index === -1) return prev;
+                    const newList = [...prev];
+                    newList[index] = savedStudent;
+                    return newList;
+                });
+            }
+            setEditingStudent(null);
+        } catch (error) {
+            alert("Failed to save changes: " + error.message);
+        }
     };
 
     const handleDelete = (roll) => {
@@ -374,6 +399,174 @@ export const StudentInfoView = ({
         XLSX.writeFile(wb, `AID_Student_Addresses_${today}.xlsx`);
     };
 
+    const fileInputRef = useRef(null);
+
+    const handleImportClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
+    const importFromExcel = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const rawData = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+                if (!rawData || rawData.length === 0) {
+                    alert("No data found in the Excel file.");
+                    return;
+                }
+
+                const newStudents = rawData.map(row => {
+                    const r = {};
+                    for (const key in row) {
+                        r[key.toLowerCase().trim()] = row[key];
+                    }
+
+                    const rollRaw = r['roll no'] || r['roll'] || r['id'] || r['hno'] || r['h.no'] || r['h no'];
+                    const roll = String(rollRaw || '').trim();
+                    const name = r['name'] || r['student name'];
+                    
+                    if (!roll) return null;
+
+                    const newSt = { roll };
+                    if ('name' in r || 'student name' in r) newSt.name = name ? String(name).trim() : '';
+                    if ('team' in r) newSt.team = r['team'] ? String(r['team']).trim() : '';
+                    if ('email' in r) newSt.email = r['email'] ? String(r['email']).trim() : '';
+                    if ('phone' in r || 'contact' in r) newSt.phone = (r['phone'] || r['contact'] || '').toString().trim();
+                    if ('laptop' in r) newSt.laptop = r['laptop'] ? String(r['laptop']).trim().toLowerCase() : '';
+                    if ('allocated project / work' in r || 'project' in r) newSt.project = (r['allocated project / work'] || r['project'] || '').toString().trim();
+                    if ('parent name(s)' in r || 'parent name' in r) newSt.parentName = (r['parent name(s)'] || r['parent name'] || '').toString().trim();
+                    if ('parent contact 1' in r || 'p1' in r) newSt.p1 = (r['parent contact 1'] || r['p1'] || '').toString().trim();
+                    if ('parent contact 2' in r || 'p2' in r) newSt.p2 = (r['parent contact 2'] || r['p2'] || '').toString().trim();
+                    if ('club' in r) newSt.club = r['club'] ? String(r['club']).trim() : '';
+                    if ('abc id' in r || 'abc' in r) newSt.abcId = (r['abc id'] || r['abc'] || '').toString().trim();
+                    if ('village/street' in r || 'village' in r) newSt.village = (r['village/street'] || r['village'] || '').toString().trim();
+                    if ('mandal' in r) newSt.mandal = r['mandal'] ? String(r['mandal']).trim() : '';
+                    if ('district' in r) newSt.district = r['district'] ? String(r['district']).trim() : '';
+                    if ('state' in r) newSt.state = r['state'] ? String(r['state']).trim() : '';
+                    if ('pincode' in r) newSt.pincode = r['pincode'] ? String(r['pincode']).trim() : '';
+
+                    const getVal = (keys) => {
+                        for (const k of keys) if (k in r) return r[k];
+                        return undefined;
+                    };
+                    
+                    const bl = getVal(['backlogs', 'backlogs (total)', 'total backlogs']);
+                    if (bl !== undefined) newSt.backlogs = bl ? parseInt(bl, 10) : 0;
+
+                    const getSem = (v) => v === '—' || v === '-' ? '' : String(v || '').trim();
+
+                    const s11 = getVal(['s11', 'sem 1-1']);
+                    if (s11 !== undefined) newSt.s11 = getSem(s11);
+                    const s12 = getVal(['s12', 'sem 1-2']);
+                    if (s12 !== undefined) newSt.s12 = getSem(s12);
+                    const s21 = getVal(['s21', 'sem 2-1']);
+                    if (s21 !== undefined) newSt.s21 = getSem(s21);
+                    const s22 = getVal(['s22', 'sem 2-2']);
+                    if (s22 !== undefined) newSt.s22 = getSem(s22);
+                    const s31 = getVal(['s31', 'sem 3-1']);
+                    if (s31 !== undefined) newSt.s31 = getSem(s31);
+                    const s32 = getVal(['s32', 'sem 3-2']);
+                    if (s32 !== undefined) newSt.s32 = getSem(s32);
+                    const s41 = getVal(['s41', 'sem 4-1']);
+                    if (s41 !== undefined) newSt.s41 = getSem(s41);
+                    const s42 = getVal(['s42', 'sem 4-2']);
+                    if (s42 !== undefined) newSt.s42 = getSem(s42);
+                    
+                    return newSt;
+                }).filter(Boolean);
+
+                if (newStudents.length > 0) {
+                    const copy = [...data];
+                    newStudents.forEach(newSt => {
+                        const idx = copy.findIndex(s => {
+                            const dbRoll = s.roll || s.id || '';
+                            return String(dbRoll).toUpperCase().trim() === newSt.roll.toUpperCase();
+                        });
+                        
+                        const hasImportedSems = ['s11', 's12', 's21', 's22', 's31', 's32', 's41', 's42'].some(k => k in newSt);
+                        
+                        const calculateBacklogs = (studentObj) => {
+                            let count = 0;
+                            ['s11', 's12', 's21', 's22', 's31', 's32', 's41', 's42'].forEach(key => {
+                                const val = String(studentObj[key] || '').trim();
+                                if (val && val !== '-' && val !== '—') {
+                                    count += val.split(',').filter(sub => sub.trim()).length;
+                                }
+                            });
+                            return count;
+                        };
+
+                        if (idx >= 0) {
+                            const existing = copy[idx];
+                            const merged = { ...existing };
+                            Object.keys(newSt).forEach(k => {
+                                merged[k] = newSt[k];
+                            });
+                            
+                            // If they provided semester data in this import, the subjects are the source of truth
+                            if (hasImportedSems) {
+                                merged.backlogs = calculateBacklogs(merged);
+                            }
+                            
+                            copy[idx] = merged;
+                        } else {
+                            if (hasImportedSems) {
+                                newSt.backlogs = calculateBacklogs(newSt);
+                            }
+                            copy.push(newSt);
+                        }
+                    });
+
+                    if (isSupabaseConfigured) {
+                        const ownerEmail = userEmail || 'k12aidha@example.com';
+                        // Ensure all required fields for Supabase are present
+                        const rowsToUpload = copy.map(s => ({
+                            ...s,
+                            owner_email: ownerEmail
+                        }));
+                        
+                        // Push directly to cloud database first
+                        upsertSupabaseStudents(ownerEmail, rowsToUpload).then((ok) => {
+                            if (ok) {
+                                setStudentInfoData(copy);
+                                alert(`Successfully uploaded ${newStudents.length} students directly to Supabase cloud!`);
+                            } else {
+                                alert("Failed to upload students to Supabase cloud. Please check the logs.");
+                            }
+                        }).catch((err) => {
+                            console.error(err);
+                            alert("Error uploading to Supabase: " + err.message);
+                        });
+                    } else {
+                        // Fallback to updating local state
+                        setStudentInfoData(copy);
+                        alert(`Successfully imported/updated ${newStudents.length} students locally!`);
+                    }
+                } else {
+                    alert("Could not extract student data. Make sure 'Roll No' column exists.");
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("Error parsing Excel file.");
+            }
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
+
     const noLaptop = data.filter(s => s.laptop === 'no').length;
     const withProject = data.filter(s => s.project).length;
 
@@ -416,10 +609,17 @@ export const StudentInfoView = ({
                         </button>
                     )}
                     {!isReadOnly && directAccess && (
-                        <button onClick={handleAddStudent}
-                            className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transition-all active:scale-95">
-                            <Plus className="w-4 h-4" /> Add Student
-                        </button>
+                        <>
+                            <input type="file" ref={fileInputRef} onChange={importFromExcel} accept=".xlsx,.xls,.csv" className="hidden" />
+                            <button onClick={handleImportClick}
+                                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transition-all active:scale-95">
+                                <Plus className="w-4 h-4" /> Import Excel
+                            </button>
+                            <button onClick={handleAddStudent}
+                                className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transition-all active:scale-95">
+                                <Plus className="w-4 h-4" /> Add Student
+                            </button>
+                        </>
                     )}
                     <button onClick={exportToExcel}
                         className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transition-all active:scale-95">
