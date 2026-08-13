@@ -24,7 +24,14 @@ export const useLocalStorage = (key, initialValue, userEmail) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const saveTimerRef = useRef(null);
 
-  const ownerEmail = userEmail || DEFAULT_OWNER;
+  // Normalize ownerEmail so team leads and students read from the main class data pool
+  let ownerEmail = userEmail || DEFAULT_OWNER;
+  
+  // If the user is a team lead or a student (not one of the known admin emails),
+  // they still need to read/write the data belonging to the main admin (DEFAULT_OWNER).
+  if (!['k12aidha@example.com', 'bmk@example.com', '20056@example.com'].includes(ownerEmail.toLowerCase())) {
+    ownerEmail = DEFAULT_OWNER;
+  }
 
   // ── Load from Supabase on mount / userEmail change ──────────────────────
   useEffect(() => {
