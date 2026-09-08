@@ -1,11 +1,8 @@
 export const crtStudentData = [
   { id: '236Q1A4504', name: 'SANAPATHI SUSMITHA', status: null },
   { id: '236Q1A4522', name: 'KONDI YUVARAJU', status: null },
-  { id: '23B21A4517', name: 'MANCHALA JYOTSNA', status: null },
   { id: '23B21A4519', name: 'NALLE TRINAINI VIJAYA LEELA', status: null },
   { id: '23B21A4520', name: 'MAMILLAPALLI MONIKA', status: null },
-  { id: '23B21A4521', name: 'JAGGAMSETTI JAHNAVI DEVI', status: null },
-  { id: '23B21A4523', name: 'SADI NAVYA SRI', status: null },
   { id: '23B21A4524', name: 'KUTCHU SHIVA MANI', status: null },
   { id: '23B21A4525', name: 'DASARI RAMYA', status: null },
   { id: '23B21A4526', name: 'GALLA DURGA BHAVANI', status: null },

@@ -17,6 +17,7 @@ import { TeamLeadDashboardView } from './components/TeamLeadDashboardView';
 import { ChatBot } from './components/ChatBot';
 import { AdminDashboardView } from './components/AdminDashboardView';
 import { AnnouncementsView } from './components/AnnouncementsView';
+import { MaterialsView } from './components/MaterialsView';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { studentInfoData as defaultStudentInfoData } from './data/studentInfoData';
 import { crtStudentData as defaultCrtStudentData } from './data/crtStudentData';
@@ -772,6 +773,8 @@ const App = () => {
             onUpdateStudent={updateStudentInBothStates}
           />
         );
+      case 'materials':
+        return <MaterialsView />;
       default:
         return (
           <DailyMarkingView
@@ -823,6 +826,7 @@ const App = () => {
       items: [
         { id: 'backlogs',     label: 'Backlogs',               icon: BookOpen  },
         { id: 'subjectWise',  label: 'Sub-wise Backlog Count',  icon: BarChart2 },
+        { id: 'materials',    label: 'Study Materials',        icon: BookOpen  },
       ],
     },
   ];

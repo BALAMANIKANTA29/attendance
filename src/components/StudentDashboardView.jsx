@@ -4,6 +4,7 @@ import {
   ShieldAlert, Shield, LogOut, CheckCircle2, AlertTriangle, Info,
   TrendingUp, Award, Compass, Layers, Check, FileSpreadsheet, Edit2, Save, X, MapPin, Megaphone, Printer
 } from 'lucide-react';
+import { MaterialsView } from './MaterialsView';
 
 const PhoneLink = ({ number, fallback = "Not Recorded" }) => {
   if (!number || number === '--' || number === 'NA' || number.trim() === '') {
@@ -773,6 +774,8 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
             ))}
           </div>
         </div>
+
+        <MaterialsView />
       </main>
     </div>
   );

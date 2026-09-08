@@ -5,6 +5,7 @@ import {
   Shield, AlertTriangle, ArrowRight, Info, Award, Edit3, X
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { MaterialsView } from './MaterialsView';
 import { getLocalDateString } from '../utils/dateUtils';
 import { studentInfoData as defaultStudentInfoData } from '../data/studentInfoData';
 
@@ -1224,6 +1225,7 @@ export const TeamLeadDashboardView = ({
           </div>
         )}
 
+        <MaterialsView />
       </main>
 
       {/* --- EDIT STUDENT INFO & ADDRESS MODAL --- */}

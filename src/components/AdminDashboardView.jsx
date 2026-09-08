@@ -5,6 +5,7 @@ import {
   TrendingUp, TrendingDown, Clock, ArrowRight, Activity,
   GraduationCap, Laptop, Shield, Zap, Megaphone
 } from 'lucide-react';
+import { MaterialsView } from './MaterialsView';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -639,6 +640,8 @@ export const AdminDashboardView = ({
           )}
         </div>
       </div>
+
+      <MaterialsView />
 
       {/* ── Footer note ── */}
       <div className="text-center text-xs text-gray-400 pb-4">
