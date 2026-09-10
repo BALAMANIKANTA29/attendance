@@ -1512,7 +1512,7 @@ export const studentInfoData = [
         "s31": ""
     },
     {
-        "team": "TEAM-12",
+        "team": "TEAM-2",
         "cls": "K1",
         "room": "K12AIDHA",
         "name": "VANAMA AKHIL",

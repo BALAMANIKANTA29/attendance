@@ -21,6 +21,7 @@ import { MaterialsView } from './components/MaterialsView';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { studentInfoData as defaultStudentInfoData } from './data/studentInfoData';
 import { crtStudentData as defaultCrtStudentData } from './data/crtStudentData';
+import { updateSupabaseStudent } from './lib/supabase';
 
 export const sortStudentsByTeamOrder = (list) => {
   if (!Array.isArray(list)) return [];
@@ -180,6 +181,21 @@ const App = () => {
   }, userEmail);
 
   const [studentInfoDataState, setStudentInfoDataState] = useLocalStorage('studentInfoData', [], userEmail);
+
+  React.useEffect(() => {
+    const targetRoll = '23B21A45B4';
+    const targetStudent = studentInfoDataState.find(student => (student.roll || student.id || '').toUpperCase() === targetRoll);
+    if (!targetStudent || targetStudent.team === 'TEAM-2') return;
+
+    setStudentInfoDataState(prev => prev.map(student => (
+      (student.roll || student.id || '').toUpperCase() === targetRoll
+        ? { ...student, team: 'TEAM-2' }
+        : student
+    )));
+
+    updateSupabaseStudent('k12aidha@example.com', targetRoll, { team: 'TEAM-2' })
+      .catch(error => console.warn('Failed to sync Vanama Akhil team assignment:', error));
+  }, [studentInfoDataState, setStudentInfoDataState]);
 
   // Default data migration logic has been removed.
   // Supabase is the single source of truth.
