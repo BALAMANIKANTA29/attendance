@@ -197,6 +197,21 @@ const App = () => {
       .catch(error => console.warn('Failed to sync Vanama Akhil team assignment:', error));
   }, [studentInfoDataState, setStudentInfoDataState]);
 
+  React.useEffect(() => {
+    const targetRoll = '236Q1A4521';
+    const targetStudent = studentInfoDataState.find(student => (student.roll || student.id || '').toUpperCase() === targetRoll);
+    if (!targetStudent || targetStudent.laptop === 'yes') return;
+
+    setStudentInfoDataState(prev => prev.map(student => (
+      (student.roll || student.id || '').toUpperCase() === targetRoll
+        ? { ...student, laptop: 'yes' }
+        : student
+    )));
+
+    updateSupabaseStudent('k12aidha@example.com', targetRoll, { laptop: 'yes' })
+      .catch(error => console.warn('Failed to sync Tadicharla Rathnam Raju laptop status:', error));
+  }, [studentInfoDataState, setStudentInfoDataState]);
+
   // Default data migration logic has been removed.
   // Supabase is the single source of truth.
 
