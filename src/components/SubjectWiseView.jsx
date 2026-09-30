@@ -10,6 +10,7 @@ const DEFAULT_SEMESTERS = [
     { key: 's21', label: 'Semester 2-1', short: '2-1', color: 'blue' },
     { key: 's22', label: 'Semester 2-2', short: '2-2', color: 'cyan' },
     { key: 's31', label: 'Semester 3-1', short: '3-1', color: 'teal' },
+    { key: 's32', label: 'Semester 3-2', short: '3-2', color: 'slate' },
 ];
 
 const COLOR_KEYS = ['indigo', 'sky', 'blue', 'cyan', 'teal', 'slate', 'pink', 'emerald', 'amber', 'rose'];

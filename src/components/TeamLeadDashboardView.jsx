@@ -75,7 +75,8 @@ export const TeamLeadDashboardView = ({
       s12: student.s12 || '',
       s21: student.s21 || '',
       s22: student.s22 || '',
-      s31: student.s31 || student.backlogSubs || ''
+      s31: student.s31 || '',
+      s32: student.s32 || ''
     });
   };
 
@@ -106,8 +107,9 @@ export const TeamLeadDashboardView = ({
       s21: editFormData.s21,
       s22: editFormData.s22,
       s31: editFormData.s31,
-      backlogSubs: [editFormData.s11, editFormData.s12, editFormData.s21, editFormData.s22, editFormData.s31].filter(Boolean).join(','),
-      backlogs: ['s11', 's12', 's21', 's22', 's31'].reduce((acc, semKey) => {
+      s32: editFormData.s32,
+      backlogSubs: [editFormData.s11, editFormData.s12, editFormData.s21, editFormData.s22, editFormData.s31, editFormData.s32].filter(Boolean).join(','),
+      backlogs: ['s11', 's12', 's21', 's22', 's31', 's32'].reduce((acc, semKey) => {
         const val = editFormData[semKey] || '';
         if (!val.trim()) return acc;
         return acc + val.split(',').filter(x => x.trim()).length;

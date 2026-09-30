@@ -25,7 +25,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-1",
@@ -50,10 +51,11 @@ export const studentInfoData = [
         "state": "Andhra Pradesh",
         "pincode": "535161",
         "s11": "",
-        "s12": "DEVC",
+        "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-1",
@@ -81,7 +83,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-1",
@@ -109,7 +112,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-1",
@@ -134,10 +138,11 @@ export const studentInfoData = [
         "state": "Andhra Pradesh",
         "pincode": "534313",
         "s11": "EG",
-        "s12": "DEVC",
+        "s12": "",
         "s21": "",
         "s22": "SMDS",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-2",
@@ -150,8 +155,8 @@ export const studentInfoData = [
         "p1": "7799297114",
         "p2": "",
         "email": "monikachowdary505@gmail.com",
-        "backlogs": 4,
-        "backlogSubs": "CN,IOT,AI,COA",
+        "backlogs": 0,
+        "backlogSubs": "",
         "laptop": "yes",
         "club": "NCC",
         "abcId": "252-124-682-026",
@@ -165,7 +170,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": "CN,IOT,AI,COA"
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-2",
@@ -193,7 +199,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-2",
@@ -221,7 +228,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-2",
@@ -249,7 +257,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-3",
@@ -262,8 +271,8 @@ export const studentInfoData = [
         "p1": "9573198567",
         "p2": "8125665075",
         "email": "yuva2832@gmail.com",
-        "backlogs": 2,
-        "backlogSubs": "OS,COA",
+        "backlogs": 0,
+        "backlogSubs": "",
         "laptop": "yes",
         "club": "--",
         "abcId": "836-491-132-314",
@@ -276,8 +285,9 @@ export const studentInfoData = [
         "s11": "",
         "s12": "",
         "s21": "",
-        "s22": "OS",
-        "s31": "COA"
+        "s22": "",
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-3",
@@ -305,7 +315,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-3",
@@ -333,7 +344,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-3",
@@ -361,7 +373,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-4",
@@ -389,7 +402,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-4",
@@ -417,7 +431,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-4",
@@ -445,7 +460,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-4",
@@ -470,10 +486,11 @@ export const studentInfoData = [
         "state": "Andhra Pradesh",
         "pincode": "534452",
         "s11": "",
-        "s12": "DEVC",
+        "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-5",
@@ -486,8 +503,8 @@ export const studentInfoData = [
         "p1": "9573584314",
         "p2": "",
         "email": "rathnamraju720@gmail.com",
-        "backlogs": 3,
-        "backlogSubs": "DBMS, SMDS, EDVC",
+        "backlogs": 1,
+        "backlogSubs": "SMDS",
         "laptop": "yes",
         "club": "NCC",
         "abcId": "906-559-526-167",
@@ -498,10 +515,11 @@ export const studentInfoData = [
         "state": "Andhra Pradesh",
         "pincode": "533254",
         "s11": "",
-        "s12": "DS",
-        "s21": "DBMS",
+        "s12": "",
+        "s21": "",
         "s22": "SMDS",
-        "s31": "EDVC"
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-5",
@@ -514,8 +532,8 @@ export const studentInfoData = [
         "p1": "9573395551",
         "p2": "8309422276",
         "email": "harsharavada22@gmail.com",
-        "backlogs": 5,
-        "backlogSubs": "DEVC, CHE, JAVA, SMDS, AI",
+        "backlogs": 3,
+        "backlogSubs": "DEVC, CHE, SMDS",
         "laptop": "no",
         "club": "NSS",
         "abcId": "222-181-058-556",
@@ -525,11 +543,12 @@ export const studentInfoData = [
         "district": "Anakapalli",
         "state": "Andhra Pradesh",
         "pincode": "531036",
-        "s11": "EG",
-        "s12": "DEVC,CHE",
-        "s21": "JAVA",
+        "s11": "",
+        "s12": "DEVC, CHE",
+        "s21": "",
         "s22": "SMDS",
-        "s31": "AI"
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-5",
@@ -557,7 +576,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-5",
@@ -570,8 +590,8 @@ export const studentInfoData = [
         "p1": "8341422183",
         "p2": "",
         "email": "dhanushyeripilli@gmail.com",
-        "backlogs": 15,
-        "backlogSubs": "LAC,CP,PHY,BEEE,EG,DS,CHE,BCME,DMGT,ADS,JAVA,DBMS,OS,SMDS,COA",
+        "backlogs": 14,
+        "backlogSubs": "LAC, CP, PHY, BEEE, EG, DS, CHE, BCME, DMGT, ADS, JAVA, DBMS, OS, SMDS",
         "laptop": "yes",
         "club": "--",
         "abcId": "844119553471",
@@ -581,11 +601,12 @@ export const studentInfoData = [
         "district": "Anakapalli",
         "state": "Andhra Pradesh",
         "pincode": "531061",
-        "s11": "LAC,CP,PHY,BEEE,EG",
-        "s12": "DS,CHE,BCME",
-        "s21": "DMGT,ADS,JAVA,DBMS",
-        "s22": "OS,SMDS",
-        "s31": "COA"
+        "s11": "LAC, CP, PHY, BEEE, EG",
+        "s12": "DS, CHE, BCME",
+        "s21": "DMGT, ADS, JAVA, DBMS",
+        "s22": "OS, SMDS",
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-5",
@@ -598,8 +619,8 @@ export const studentInfoData = [
         "p1": "",
         "p2": "9000603454",
         "email": "joshnamanchala71@gmail.com",
-        "backlogs": 0,
-        "backlogSubs": "",
+        "backlogs": 3,
+        "backlogSubs": "BDA, ML, NOSQL",
         "laptop": "yes",
         "club": "--",
         "abcId": "958-813-731-442",
@@ -609,11 +630,12 @@ export const studentInfoData = [
         "district": "Prakasam",
         "state": "Andhra Pradesh",
         "pincode": "523265",
-        "s11": "EG",
+        "s11": "",
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": "BDA, ML, NOSQL"
     },
     {
         "team": "TEAM-6",
@@ -641,7 +663,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-6",
@@ -654,8 +677,8 @@ export const studentInfoData = [
         "p1": "8978587613",
         "p2": "",
         "email": "satishregeti02@gmail.com",
-        "backlogs": 7,
-        "backlogSubs": "LAC, PHY, BEEE, DEVC, DS, CHE, BCME",
+        "backlogs": 8,
+        "backlogSubs": "LAC, PHY, BEEE, DEVC, DS, CHE, BCME, DV",
         "laptop": "yes",
         "club": "NCC",
         "abcId": "625-167-575-832",
@@ -665,11 +688,12 @@ export const studentInfoData = [
         "district": "Srikakulam",
         "state": "Andhra Pradesh",
         "pincode": "532213",
-        "s11": "LAC,PHY,BEEE,EG",
-        "s12": "DEVC,DS,CHE,BCME",
+        "s11": "LAC, PHY, BEEE",
+        "s12": "DEVC, DS, CHE, BCME",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": "DV"
     },
     {
         "team": "TEAM-6",
@@ -682,8 +706,8 @@ export const studentInfoData = [
         "p1": "7569683395",
         "p2": "9346717638",
         "email": "danivictor559@gmail.com",
-        "backlogs": 5,
-        "backlogSubs": "DEVC,BCME,JAVA,OS,SMDS",
+        "backlogs": 3,
+        "backlogSubs": "DEVC, BCME, SMDS",
         "laptop": "yes",
         "club": "--",
         "abcId": "536-933-139-584",
@@ -694,10 +718,11 @@ export const studentInfoData = [
         "state": "Andhra Pradesh",
         "pincode": "522307",
         "s11": "",
-        "s12": "DEVC,BCME",
-        "s21": "JAVA",
-        "s22": "OS,SMDS",
-        "s31": ""
+        "s12": "DEVC, BCME",
+        "s21": "",
+        "s22": "SMDS",
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-6",
@@ -710,8 +735,8 @@ export const studentInfoData = [
         "p1": "9502371984",
         "p2": "9032199197",
         "email": "syamalavelama6@gmail.com",
-        "backlogs": 2,
-        "backlogSubs": "DEVC,SMDS",
+        "backlogs": 3,
+        "backlogSubs": "DEVC, SMDS, BDA",
         "laptop": "yes",
         "club": "--",
         "abcId": "572-850-201-218",
@@ -725,7 +750,8 @@ export const studentInfoData = [
         "s12": "DEVC",
         "s21": "",
         "s22": "SMDS",
-        "s31": ""
+        "s31": "",
+        "s32": "BDA"
     },
     {
         "team": "TEAM-6",
@@ -738,8 +764,8 @@ export const studentInfoData = [
         "p1": "8008929029",
         "p2": "",
         "email": "boddupalliprasanth4@gmail.com",
-        "backlogs": 2,
-        "backlogSubs": "DEVC, SMDS",
+        "backlogs": 3,
+        "backlogSubs": "DEVC, SMDS, DV",
         "laptop": "yes",
         "club": "NCC",
         "abcId": "359-465-481-628",
@@ -749,11 +775,12 @@ export const studentInfoData = [
         "district": "West Godavari",
         "state": "Andhra Pradesh",
         "pincode": "534240",
-        "s11": "EG",
+        "s11": "",
         "s12": "DEVC",
         "s21": "",
         "s22": "SMDS",
-        "s31": ""
+        "s31": "",
+        "s32": "DV"
     },
     {
         "team": "TEAM-7",
@@ -766,8 +793,8 @@ export const studentInfoData = [
         "p1": "9640569203",
         "p2": "6305563963",
         "email": "dileepkonakalla5@gmail.com",
-        "backlogs": 4,
-        "backlogSubs": "EG,DEVC,ADS,JAVA",
+        "backlogs": 3,
+        "backlogSubs": "EG, DEVC, JAVA",
         "laptop": "yes",
         "club": "--",
         "abcId": "820-889-337-302",
@@ -779,9 +806,10 @@ export const studentInfoData = [
         "pincode": "534452",
         "s11": "EG",
         "s12": "DEVC",
-        "s21": "ADS,JAVA",
+        "s21": "JAVA",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-7",
@@ -795,7 +823,7 @@ export const studentInfoData = [
         "p2": "9989708549",
         "email": "bojankijaswanth@gmail.com",
         "backlogs": 9,
-        "backlogSubs": "LAC,PHY,EG,DEVC,CHE,DMGT,JAVA,SMDS,EDVC",
+        "backlogSubs": "LAC, PHY, EG, DEVC, CHE, DMGT, JAVA, SMDS, BDA",
         "laptop": "no",
         "club": "NSS",
         "abcId": "110-527-389-459",
@@ -805,11 +833,12 @@ export const studentInfoData = [
         "district": "Vizianagaram",
         "state": "Andhra Pradesh",
         "pincode": "535281",
-        "s11": "LAC,PHY,EG",
-        "s12": "DEVC,CHE",
-        "s21": "DMGT,JAVA",
+        "s11": "LAC, PHY, EG",
+        "s12": "DEVC, CHE",
+        "s21": "DMGT, JAVA",
         "s22": "SMDS",
-        "s31": "EDVC"
+        "s31": "",
+        "s32": "BDA"
     },
     {
         "team": "TEAM-7",
@@ -837,7 +866,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "SE",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-7",
@@ -850,8 +880,8 @@ export const studentInfoData = [
         "p1": "8332962275",
         "p2": "",
         "email": "saikirangude1153@gmail.com",
-        "backlogs": 7,
-        "backlogSubs": "PHY, EG, DEVC, CHE, DMGT, ADS, SMDS",
+        "backlogs": 9,
+        "backlogSubs": "PHY, EG, DEVC, CHE, DMGT, ADS, SMDS, ML, NOSQL",
         "laptop": "yes",
         "club": "--",
         "abcId": "912-504-141-803",
@@ -861,11 +891,12 @@ export const studentInfoData = [
         "district": "East Godavari",
         "state": "Andhra Pradesh",
         "pincode": "534316",
-        "s11": "PHY,BEEE,EG",
-        "s12": "DEVC,CHE",
-        "s21": "DMGT,ADS",
+        "s11": "PHY, EG",
+        "s12": "DEVC, CHE",
+        "s21": "DMGT, ADS",
         "s22": "SMDS",
-        "s31": ""
+        "s31": "",
+        "s32": "ML, NOSQL"
     },
     {
         "team": "TEAM-7",
@@ -890,10 +921,11 @@ export const studentInfoData = [
         "state": "Andhra Pradesh",
         "pincode": "531115",
         "s11": "EG",
-        "s12": "CHE,EWS",
+        "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-8",
@@ -906,8 +938,8 @@ export const studentInfoData = [
         "p1": "7799871597",
         "p2": "",
         "email": "bankamadhu9346@gmail.com",
-        "backlogs": 2,
-        "backlogSubs": "EG, JAVA",
+        "backlogs": 1,
+        "backlogSubs": "EG",
         "laptop": "no",
         "club": "NCC",
         "abcId": "632-084-332-726",
@@ -918,10 +950,11 @@ export const studentInfoData = [
         "state": "Andhra Pradesh",
         "pincode": "531219",
         "s11": "EG",
-        "s12": "CHE",
-        "s21": "JAVA",
+        "s12": "",
+        "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-8",
@@ -934,8 +967,8 @@ export const studentInfoData = [
         "p1": "7730852157",
         "p2": "9949301139",
         "email": "syamnagabathula2@gmail.com",
-        "backlogs": 11,
-        "backlogSubs": "LAC,CP,PHY,BEEE,EG,DEVC,ADS,JAVA,SE,OT,CN",
+        "backlogs": 12,
+        "backlogSubs": "LAC, CP, PHY, BEEE, EG, DEVC, ADS, JAVA, SE, CN, BDA, ML",
         "laptop": "yes",
         "club": "--",
         "abcId": "723-201-609-292",
@@ -945,11 +978,12 @@ export const studentInfoData = [
         "district": "Dr. B.R. Ambedkar Konaseema",
         "state": "Andhra Pradesh",
         "pincode": "533248",
-        "s11": "LAC,CP,PHY,BEEE,EG",
+        "s11": "LAC, CP, PHY, BEEE, EG",
         "s12": "DEVC",
-        "s21": "ADS,JAVA",
-        "s22": "SE,OT",
-        "s31": "CN"
+        "s21": "ADS, JAVA",
+        "s22": "SE",
+        "s31": "CN",
+        "s32": "BDA, ML"
     },
     {
         "team": "TEAM-8",
@@ -973,11 +1007,12 @@ export const studentInfoData = [
         "district": "Krishna",
         "state": "Andhra Pradesh",
         "pincode": "521151",
-        "s11": "LAC",
-        "s12": "DEVC",
+        "s11": "",
+        "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-8",
@@ -1005,7 +1040,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-8",
@@ -1033,7 +1069,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "SMDS",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-9",
@@ -1061,7 +1098,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-9",
@@ -1085,11 +1123,12 @@ export const studentInfoData = [
         "district": "Vizianagaram",
         "state": "Andhra Pradesh",
         "pincode": "535270",
-        "s11": "BEEE,EG",
+        "s11": "",
         "s12": "DEVC",
         "s21": "",
         "s22": "SMDS",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-9",
@@ -1117,7 +1156,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-9",
@@ -1130,8 +1170,8 @@ export const studentInfoData = [
         "p1": "9849080107",
         "p2": "9949647113",
         "email": "nomulateja1973@gmail.com",
-        "backlogs": 0,
-        "backlogSubs": "",
+        "backlogs": 1,
+        "backlogSubs": "ML",
         "laptop": "yes",
         "club": "--",
         "abcId": "772-976-426-552",
@@ -1145,7 +1185,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": "ML"
     },
     {
         "team": "TEAM-9",
@@ -1158,8 +1199,8 @@ export const studentInfoData = [
         "p1": "9701883696",
         "p2": "8143670221",
         "email": "kchanduchandu0221@gmail.com",
-        "backlogs": 3,
-        "backlogSubs": "PHY,DEVC,JAVA",
+        "backlogs": 2,
+        "backlogSubs": "PHY, DEVC",
         "laptop": "yes",
         "club": "--",
         "abcId": "969-022-630-926",
@@ -1171,9 +1212,10 @@ export const studentInfoData = [
         "pincode": "532401",
         "s11": "PHY",
         "s12": "DEVC",
-        "s21": "JAVA",
+        "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-10",
@@ -1201,7 +1243,8 @@ export const studentInfoData = [
         "s12": "DEVC",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-10",
@@ -1214,8 +1257,8 @@ export const studentInfoData = [
         "p1": "9618576614",
         "p2": "",
         "email": "devisrig129@gmail.com",
-        "backlogs": 6,
-        "backlogSubs": "LAC, DEVC, DMGT, JAVA, SMDS, COA",
+        "backlogs": 4,
+        "backlogSubs": "EG, DEVC, DMGT, SMDS",
         "laptop": "yes",
         "club": "--",
         "abcId": "561-764-98166",
@@ -1225,11 +1268,12 @@ export const studentInfoData = [
         "district": "West Godavari",
         "state": "Andhra Pradesh",
         "pincode": "534269",
-        "s11": "LAC,EG",
+        "s11": "EG",
         "s12": "DEVC",
-        "s21": "DMGT,JAVA",
+        "s21": "DMGT",
         "s22": "SMDS",
-        "s31": "COA"
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-10",
@@ -1243,7 +1287,7 @@ export const studentInfoData = [
         "p2": "",
         "email": "ballapurnakumar@gmail.com",
         "backlogs": 1,
-        "backlogSubs": "JAVA",
+        "backlogSubs": "BDA",
         "laptop": "yes",
         "club": "NCC",
         "abcId": "862873877164",
@@ -1254,10 +1298,11 @@ export const studentInfoData = [
         "state": "Andhra Pradesh",
         "pincode": "533221",
         "s11": "",
-        "s12": "DEVC",
-        "s21": "JAVA",
+        "s12": "",
+        "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": "BDA"
     },
     {
         "team": "TEAM-10",
@@ -1270,8 +1315,8 @@ export const studentInfoData = [
         "p1": "8050701963",
         "p2": "7893423852",
         "email": "pavankumartamarana90@gmail.com",
-        "backlogs": 10,
-        "backlogSubs": "EG, DEVC, DMGT, ADS, JAVA, DBMS, OS, SE, OT, CN",
+        "backlogs": 8,
+        "backlogSubs": "EG, DEVC, DMGT, ADS, JAVA, DBMS, OS, OT",
         "laptop": "yes",
         "club": "--",
         "abcId": "780-266-578-278",
@@ -1282,10 +1327,11 @@ export const studentInfoData = [
         "state": "Andhra Pradesh",
         "pincode": "531116",
         "s11": "EG",
-        "s12": "DEVC,BCME",
-        "s21": "DMGT,ADS,JAVA,DBMS",
-        "s22": "OS,SE,OT",
-        "s31": "CN"
+        "s12": "DEVC",
+        "s21": "DMGT, ADS, JAVA, DBMS",
+        "s22": "OS, OT",
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-10",
@@ -1313,7 +1359,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-11",
@@ -1341,7 +1388,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-11",
@@ -1369,7 +1417,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-11",
@@ -1382,8 +1431,8 @@ export const studentInfoData = [
         "p1": "8096562535",
         "p2": "",
         "email": "himachandrayadav7@gmail.com",
-        "backlogs": 0,
-        "backlogSubs": "",
+        "backlogs": 1,
+        "backlogSubs": "ML",
         "laptop": "yes",
         "club": "NCC",
         "abcId": "178-837-125-051",
@@ -1397,7 +1446,8 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": "ML"
     },
     {
         "team": "TEAM-11",
@@ -1410,8 +1460,8 @@ export const studentInfoData = [
         "p1": "9515337713",
         "p2": "7995903378",
         "email": "shanmukeswarraoeswargogada@gmail.com",
-        "backlogs": 5,
-        "backlogSubs": "LAC,EG,DEVC,CHE,SMDS",
+        "backlogs": 6,
+        "backlogSubs": "LAC, EG, DEVC, CHE, SMDS, BDA",
         "laptop": "yes",
         "club": "--",
         "abcId": "965-472-087-613",
@@ -1421,11 +1471,12 @@ export const studentInfoData = [
         "district": "Vizianagaram",
         "state": "Andhra Pradesh",
         "pincode": "535260",
-        "s11": "LAC,EG",
-        "s12": "DEVC,CHE",
+        "s11": "LAC, EG",
+        "s12": "DEVC, CHE",
         "s21": "",
         "s22": "SMDS",
-        "s31": ""
+        "s31": "",
+        "s32": "BDA"
     },
     {
         "team": "TEAM-11",
@@ -1449,11 +1500,12 @@ export const studentInfoData = [
         "district": "Anakapalli",
         "state": "Andhra Pradesh",
         "pincode": "531061",
-        "s11": "EG",
+        "s11": "",
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-12",
@@ -1477,11 +1529,12 @@ export const studentInfoData = [
         "district": "Anakapalli",
         "state": "Andhra Pradesh",
         "pincode": "531026",
-        "s11": "EG",
+        "s11": "",
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-12",
@@ -1494,8 +1547,8 @@ export const studentInfoData = [
         "p1": "9705545844",
         "p2": "",
         "email": "saik62907@gmail.com",
-        "backlogs": 5,
-        "backlogSubs": "DEVC,CHE,JAVA,OS,SMDS",
+        "backlogs": 3,
+        "backlogSubs": "DEVC, CHE, SMDS",
         "laptop": "yes",
         "club": "ROBOTICS",
         "abcId": "974-189-211-545",
@@ -1506,10 +1559,11 @@ export const studentInfoData = [
         "state": "Andhra Pradesh",
         "pincode": "530046",
         "s11": "",
-        "s12": "DEVC,CHE",
-        "s21": "JAVA",
-        "s22": "OS,SMDS",
-        "s31": ""
+        "s12": "DEVC, CHE",
+        "s21": "",
+        "s22": "SMDS",
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-2",
@@ -1537,7 +1591,8 @@ export const studentInfoData = [
         "s12": "DEVC",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     },
     {
         "team": "TEAM-12",
@@ -1565,8 +1620,9 @@ export const studentInfoData = [
         "s12": "",
         "s21": "",
         "s22": "",
-        "s31": ""
+        "s31": "",
+        "s32": ""
     }
 ];
 
-export const teams = ['TEAM-1', 'TEAM-2', 'TEAM-3', 'TEAM-4', 'TEAM-5', 'TEAM-6', 'TEAM-7', 'TEAM-8', 'TEAM-9', 'TEAM-10', 'TEAM-11', 'TEAM-12'];
+export const teams = ["TEAM-1", "TEAM-2", "TEAM-3", "TEAM-4", "TEAM-5", "TEAM-6", "TEAM-7", "TEAM-8", "TEAM-9", "TEAM-10", "TEAM-11", "TEAM-12"];

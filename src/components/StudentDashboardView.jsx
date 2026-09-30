@@ -76,6 +76,7 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
       s21: student.s21 || '',
       s22: student.s22 || '',
       s31: student.s31 || '',
+      s32: student.s32 || '',
       village: student.village || '',
       mandal: student.mandal || '',
       district: student.district || '',
@@ -106,12 +107,13 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
       s21: formData.s21,
       s22: formData.s22,
       s31: formData.s31,
+      s32: formData.s32,
       village: formData.village,
       mandal: formData.mandal,
       district: formData.district,
       state: formData.state,
       pincode: formData.pincode,
-      backlogs: ['s11', 's12', 's21', 's22', 's31'].reduce((total, semKey) => {
+      backlogs: ['s11', 's12', 's21', 's22', 's31', 's32'].reduce((total, semKey) => {
         const val = formData[semKey] || '';
         if (!val.trim()) return total;
         return total + val.split(',').filter(s => s.trim()).length;
@@ -157,7 +159,8 @@ export const StudentDashboardView = ({ student, attendanceHistory = {}, onLogout
     { key: 's12', label: '1-2' },
     { key: 's21', label: '2-1' },
     { key: 's22', label: '2-2' },
-    { key: 's31', label: '3-1' }
+    { key: 's31', label: '3-1' },
+    { key: 's32', label: '3-2' }
   ];
 
   // Map backlog subjects per semester (non-editing view)

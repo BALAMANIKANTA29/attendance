@@ -358,6 +358,7 @@ const App = () => {
     { key: 's21', label: '2-1' },
     { key: 's22', label: '2-2' },
     { key: 's31', label: '3-1' },
+    { key: 's32', label: '3-2' },
   ], userEmail);
 
   const [directAccess, setDirectAccess] = useLocalStorage('directAccess', true, userEmail);
