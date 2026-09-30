@@ -105,13 +105,8 @@ smart/
 ├── api/                                # Serverless API Layer (Vercel)
 │   └── index.js                        # Express server entry handling all REST endpoints & Supabase queries
 │
-├── server/                             # Backend Server & Cloud Seeding Layer
-│   ├── index.js                        # Local Express dev server (mounts api/index.js)
-│   ├── db.js                           # SQLite database connection & schema fallback
-│   ├── backlog_data.js                 # Semester backlog mapping (s11..s31) for active students
-│   ├── seed.js                         # Local SQLite initial seeding script
-│   ├── supabaseSeed.js                 # Supabase Cloud Database seeding script
-│   └── package.json                    # Backend dependencies
+├── server/                             # Backend Server Layer
+│   └── index.js                        # Local Express dev server (mounts api/index.js)
 │
 ├── src/                                # React Frontend Application Layer
 │   ├── App.jsx                         # Main Application Container, State & Navigation Router

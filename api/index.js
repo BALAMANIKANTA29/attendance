@@ -26,21 +26,15 @@ const app = express();
 app.use(cors());
 app.use(express.json({ strict: false }));
 
-// Try to import local SQLite DB — will fail gracefully on serverless/Vercel
-let db = null;
-try {
-  const mod = await import('../server/db.js');
-  db = mod.default;
-} catch (e) {
-  console.log('SQLite not available, using cloud/in-memory store.');
-}
+const db = null; // SQLite replaced by Supabase / in-memory store
 
 const defaultSemesters = [
   { key: 's11', label: '1-1' },
   { key: 's12', label: '1-2' },
   { key: 's21', label: '2-1' },
   { key: 's22', label: '2-2' },
-  { key: 's31', label: '3-1' }
+  { key: 's31', label: '3-1' },
+  { key: 's32', label: '3-2' }
 ];
 
 let defaultStudentInfoData = [];
@@ -49,14 +43,6 @@ try {
   defaultStudentInfoData = mod.studentInfoData;
 } catch (e) {
   console.log('Fallback data import failed.');
-}
-
-let mockClassStudents = [];
-try {
-  const mod = await import('../server/backlog_data.js');
-  mockClassStudents = mod.mockClassStudents;
-} catch (e) {
-  console.log('mockClassStudents import failed.');
 }
 
 const owners = ['k12aidha@example.com', '20056@example.com', 'bmk@example.com'];
@@ -70,15 +56,15 @@ owners.forEach(owner => {
   const courseSet = new Set();
   
   students[owner] = defaultStudentInfoData.map(s => {
-    const backlogInfo = mockClassStudents.find(m => m.id === s.roll);
-    const s11 = backlogInfo ? backlogInfo.s11 : '';
-    const s12 = backlogInfo ? backlogInfo.s12 : '';
-    const s21 = backlogInfo ? backlogInfo.s21 : '';
-    const s22 = backlogInfo ? backlogInfo.s22 : '';
-    const s31 = backlogInfo ? backlogInfo.s31 : '';
+    const s11 = s.s11 || '';
+    const s12 = s.s12 || '';
+    const s21 = s.s21 || '';
+    const s22 = s.s22 || '';
+    const s31 = s.s31 || '';
+    const s32 = s.s32 || '';
     
     const allSubs = [];
-    [s11, s12, s21, s22, s31].forEach(val => {
+    [s11, s12, s21, s22, s31, s32].forEach(val => {
       const subs = (val || '').split(',').map(x => x.trim().toUpperCase()).filter(Boolean);
       subs.forEach(sub => {
         allSubs.push(sub);
@@ -94,8 +80,9 @@ owners.forEach(owner => {
       s21,
       s22,
       s31,
-      backlogs: allSubs.length,
-      backlogSubs: allSubs.join(',')
+      s32,
+      backlogs: s.backlogs !== undefined ? s.backlogs : allSubs.length,
+      backlogSubs: s.backlogSubs || allSubs.join(',')
     };
   });
   
