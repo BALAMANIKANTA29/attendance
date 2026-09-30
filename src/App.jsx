@@ -20,7 +20,6 @@ import { AnnouncementsView } from './components/AnnouncementsView';
 import { MaterialsView } from './components/MaterialsView';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { studentInfoData as defaultStudentInfoData } from './data/studentInfoData';
-import { crtStudentData as defaultCrtStudentData } from './data/crtStudentData';
 import { updateSupabaseStudent } from './lib/supabase';
 
 export const sortStudentsByTeamOrder = (list) => {
@@ -122,21 +121,6 @@ const App = () => {
     }
   }, [setAnnouncements]);
 
-  const [crtStudents, setCrtStudents] = useLocalStorage('crtStudents', defaultCrtStudentData, userEmail);
-
-  React.useEffect(() => {
-    const targetRoll = '23B21A45B4';
-    if (crtStudents && crtStudents.length > 0 && !crtStudents.some(s => (s.id || s.roll) === targetRoll)) {
-      setCrtStudents(prev => {
-        if (prev && !prev.some(s => (s.id || s.roll) === targetRoll)) {
-          const newStudent = { id: targetRoll, name: 'VANAMA AKHIL', status: null };
-          return [...prev, newStudent];
-        }
-        return prev;
-      });
-    }
-  }, [crtStudents, setCrtStudents]);
-
   React.useEffect(() => {
     if (isAuthenticated && userRole === 'classAdmin') {
       const restrictedViewsForClassAdmin = ['adminSettings', 'studentDashboardPreview', 'parentDashboardPreview'];
@@ -145,7 +129,7 @@ const App = () => {
       }
     }
     if (isAuthenticated && userRole === 'teamLead') {
-      const restrictedViewsForTeamLead = ['dailyMarking', 'crtMarking', 'crtLog', 'adminSettings', 'dashboard', 'studentDashboardPreview', 'parentDashboardPreview', 'parentDetails'];
+      const restrictedViewsForTeamLead = ['dailyMarking', 'adminSettings', 'dashboard', 'studentDashboardPreview', 'parentDashboardPreview', 'parentDetails'];
       if (restrictedViewsForTeamLead.includes(currentView)) {
         setCurrentView('studentInfo');
       }
@@ -154,7 +138,7 @@ const App = () => {
 
   // Auto-expand sidebar group when active view changes
   React.useEffect(() => {
-    const attendanceIds = ['dailyMarking', 'dailyLog', 'crtMarking', 'crtLog'];
+    const attendanceIds = ['dailyMarking', 'dailyLog'];
     const studentsIds   = ['classMembers', 'studentInfo'];
     const backlogsIds   = ['backlogs', 'subjectWise'];
     setOpenGroups(prev => ({
@@ -163,9 +147,6 @@ const App = () => {
       backlogs:   backlogsIds.includes(currentView)   ? true : prev.backlogs,
     }));
   }, [currentView]);
-
-  const [crtAttendanceHistory, setCrtAttendanceHistory] = useLocalStorage('crtAttendanceHistory', {}, userEmail);
-  const [crtLastSubmittedReport, setCrtLastSubmittedReport] = useLocalStorage('crtLastSubmittedReport', null, userEmail);
 
   const [classInfo, setClassInfo] = useLocalStorage('classInfo', {
     name: 'K12AIDHA',
@@ -389,8 +370,6 @@ const App = () => {
   const clearAttendanceHistory = () => {
     setAttendanceHistory({});
     setLastSubmittedReport(null);
-    setCrtAttendanceHistory({});
-    setCrtLastSubmittedReport(null);
     alert('Attendance history has been cleared.');
   };
 
@@ -471,29 +450,6 @@ const App = () => {
   const handleSelectReport = (report) => {
     setLastSubmittedReport(report);
     setCurrentView('printReport');
-  };
-
-  const handleCrtSubmissionSuccess = (reportData) => {
-    setCrtAttendanceHistory(prevHistory => {
-      const dateKey = reportData.date;
-      return {
-        ...prevHistory,
-        [dateKey]: [...(prevHistory[dateKey] || []), reportData]
-      };
-    });
-    setCrtLastSubmittedReport(reportData);
-    setCurrentView('crtPrintReport');
-  };
-
-  const handleCrtNewMarking = () => {
-    setCrtLastSubmittedReport(null);
-    setCurrentView('crtMarking');
-    setCrtStudents(prev => prev.map(s => ({ ...s, status: null })));
-  };
-
-  const handleSelectCrtReport = (report) => {
-    setCrtLastSubmittedReport(report);
-    setCurrentView('crtPrintReport');
   };
 
   if (!isAuthenticated) {
@@ -628,7 +584,7 @@ const App = () => {
     }
 
     if (userRole === 'teamLead') {
-      const restrictedViewsForTeamLead = ['dailyMarking', 'crtMarking', 'crtLog', 'adminSettings', 'dashboard', 'studentDashboardPreview', 'parentDashboardPreview', 'parentDetails'];
+      const restrictedViewsForTeamLead = ['dailyMarking', 'adminSettings', 'dashboard', 'studentDashboardPreview', 'parentDashboardPreview', 'parentDetails'];
       if (restrictedViewsForTeamLead.includes(currentView)) {
         return (
           <StudentInfoView
@@ -650,8 +606,6 @@ const App = () => {
           <AdminDashboardView
             students={students}
             attendanceHistory={attendanceHistory}
-            crtStudents={crtStudents}
-            crtAttendanceHistory={crtAttendanceHistory}
             studentInfoData={studentInfoData}
             teams={teams}
             classInfo={classInfo}
@@ -697,39 +651,6 @@ const App = () => {
           <PrintReportView
             reportData={lastSubmittedReport}
             onNewMarking={handleNewMarking}
-          />
-        );
-      case 'crtMarking':
-        return (
-          <DailyMarkingView
-            students={crtStudents}
-            setStudents={setCrtStudents}
-            onSubmissionSuccess={handleCrtSubmissionSuccess}
-            attendanceHistory={crtAttendanceHistory}
-            directAccess={directAccess}
-            defaultClass="CRT-Training"
-            classList={['CRT-Training']}
-            title="CRT Attendance Marking"
-          />
-        );
-      case 'crtLog':
-        return (
-          <DailyAttendanceLogView
-            attendanceHistory={crtAttendanceHistory}
-            setAttendanceHistory={setCrtAttendanceHistory}
-            onSelectReport={handleSelectCrtReport}
-            userRole="admin"
-            directAccess={directAccess}
-            className="CRT-Training"
-            filenamePrefix="CRT_Training"
-            title="CRT Attendance Reports"
-          />
-        );
-      case 'crtPrintReport':
-        return (
-          <PrintReportView
-            reportData={crtLastSubmittedReport}
-            onNewMarking={handleCrtNewMarking}
           />
         );
       case 'backlogs':
@@ -851,8 +772,6 @@ const App = () => {
       items: [
         { id: 'dailyMarking',  label: 'Mark Attendance',     icon: UserCheck },
         { id: 'dailyLog',      label: 'Attendance Log',       icon: Calendar  },
-        { id: 'crtMarking',    label: 'Mark CRT Attendance',  icon: UserCheck },
-        { id: 'crtLog',        label: 'CRT Attendance Log',   icon: Calendar  },
       ],
     }] : [{
       key: 'attendance',
@@ -1117,8 +1036,6 @@ const App = () => {
       <ChatBot
         students={students}
         attendanceHistory={attendanceHistory}
-        crtStudents={crtStudents}
-        crtAttendanceHistory={crtAttendanceHistory}
         classInfo={classInfo}
         attendancePolicy={attendancePolicy}
         studentInfoData={studentInfoData}

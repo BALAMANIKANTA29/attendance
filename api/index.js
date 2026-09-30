@@ -807,7 +807,7 @@ app.get('/api/settings/:key', async (req, res) => {
     }
 
     if (context.isStudent && data) {
-      if (key === 'attendanceHistory' || key === 'crtAttendanceHistory') {
+      if (key === 'attendanceHistory') {
         const filtered = {};
         for (const date of Object.keys(data)) {
           const reports = data[date] || [];

@@ -119,8 +119,6 @@ const MiniBar = ({ pct, color }) => {
 export const AdminDashboardView = ({
   students,
   attendanceHistory,
-  crtStudents,
-  crtAttendanceHistory,
   studentInfoData,
   teams,
   classInfo,
@@ -193,15 +191,14 @@ export const AdminDashboardView = ({
       }
     } else if (label === 'With Backlogs') {
       setCurrentView('backlogs');
-    } else if (label === 'CRT Trainees') {
-      setCurrentView('crtMarking');
+    } else if (label === 'Class Strength') {
+      setCurrentView('classMembers');
     }
   };
 
   // ── Compute stats ─────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     const totalStudents = students?.length || 0;
-    const totalCrt      = crtStudents?.length || 0;
 
     // Today's class attendance
     const tk = todayKey();
@@ -259,12 +256,6 @@ export const AdminDashboardView = ({
       return { date, pct: tot > 0 ? Math.round((p / tot) * 100) : 0, present: p, total: tot };
     });
 
-    // CRT today
-    const crtTodayReports = crtAttendanceHistory?.[tk] || [];
-    let crtPresent = 0, crtTotal = 0;
-    crtTodayReports.forEach(r => (r.students || []).forEach(s => { crtTotal++; if (s.status === 'P') crtPresent++; }));
-    const crtTodayPct = crtTotal > 0 ? Math.round((crtPresent / crtTotal) * 100) : null;
-
     // Students with critical low attendance (<50%)
     const critical = (students || [])
       .map(s => ({ ...s, pct: getAttendancePct(attendanceHistory || {}, s.id || s.roll) }))
@@ -279,13 +270,12 @@ export const AdminDashboardView = ({
       .slice(0, 5);
 
     return {
-      totalStudents, totalCrt, todayPct, todayPresent, todayTotal,
+      totalStudents, todayPct, todayPresent, todayTotal,
       overallPct, belowMin, belowWarn, withBacklogs, totalBacklogs,
       withLaptop, withAbcId, totalDaysMarked, recentDays,
-      crtTodayPct, crtPresent, crtTotal, critical, topBacklogs,
-      minPct, warnPct,
+      critical, topBacklogs, minPct, warnPct,
     };
-  }, [students, attendanceHistory, crtStudents, crtAttendanceHistory, studentInfoData, attendancePolicy]);
+  }, [students, attendanceHistory, studentInfoData, attendancePolicy]);
 
   const greetHour = new Date().getHours();
   const greet = greetHour < 12 ? 'Good Morning' : greetHour < 17 ? 'Good Afternoon' : 'Good Evening';
@@ -352,11 +342,11 @@ export const AdminDashboardView = ({
         />
         <StatCard
           icon={Activity}
-          label="CRT Today"
-          value={stats.crtTodayPct !== null ? `${stats.crtTodayPct}%` : '—'}
-          sub={stats.crtTotal > 0 ? `${stats.crtPresent} / ${stats.crtTotal} present` : 'Not marked today'}
+          label="Overall Attendance"
+          value={stats.overallPct !== null ? `${stats.overallPct}%` : '—'}
+          sub={`${stats.totalDaysMarked} total days recorded`}
           color="sky"
-          onClick={() => setCurrentView('crtMarking')}
+          onClick={() => setCurrentView('dailyLog')}
         />
       </div>
 
@@ -581,10 +571,10 @@ export const AdminDashboardView = ({
             bg: 'bg-amber-50',
           },
           {
-            label: 'CRT Trainees',
-            value: stats.totalCrt,
-            total: stats.totalCrt,
-            icon: GraduationCap,
+            label: 'Class Strength',
+            value: stats.totalStudents,
+            total: stats.totalStudents,
+            icon: Users,
             color: 'text-emerald-600',
             bg: 'bg-emerald-50',
           },
@@ -626,8 +616,6 @@ export const AdminDashboardView = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <QuickNavCard icon={UserCheck}    label="Mark Attendance"       desc="Record today's class attendance"         color="indigo"  onClick={() => setCurrentView('dailyMarking')} />
           <QuickNavCard icon={Calendar}     label="Attendance Log"        desc="Browse & download past reports"          color="sky"     onClick={() => setCurrentView('dailyLog')} />
-          <QuickNavCard icon={UserCheck}    label="Mark CRT Attendance"   desc="Record CRT training attendance"          color="sky"  onClick={() => setCurrentView('crtMarking')} />
-          <QuickNavCard icon={Calendar}     label="CRT Attendance Log"    desc="Browse CRT attendance history"           color="teal"    onClick={() => setCurrentView('crtLog')} />
           <QuickNavCard icon={Users}        label="Class Members"         desc="Manage roll list & class roster"         color="emerald" onClick={() => setCurrentView('classMembers')} />
           <QuickNavCard icon={Info}         label="Student Info"          desc="View profiles, teams & ABC IDs"          color="indigo"  onClick={() => setCurrentView('studentInfo')} />
           <QuickNavCard icon={Shield}       label="Team Leaders Dashboard" desc="View team rosters, backlogs & projects" color="amber"   onClick={() => setCurrentView('teamLeadDashboard')} />

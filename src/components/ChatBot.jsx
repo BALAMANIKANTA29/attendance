@@ -8,8 +8,6 @@ import {
 export const ChatBot = ({
   students = [],
   attendanceHistory = {},
-  crtStudents = [],
-  crtAttendanceHistory = {},
   classInfo = {},
   attendancePolicy = {},
   studentInfoData = [],
@@ -665,18 +663,10 @@ export const ChatBot = ({
         return { text: "Switched view to **Student Info & ABC IDs**! You can check room numbers, projects, and laptop allocations." };
       }
       if (cleanQuery.includes('mark') || cleanQuery.includes('attendance marking') || cleanQuery.includes('take attendance')) {
-        if (cleanQuery.includes('crt')) {
-          setCurrentView('crtMarking');
-          return { text: "Switched view to **Mark CRT Attendance**!" };
-        }
         setCurrentView('dailyMarking');
         return { text: "Switched view to **Mark Attendance**! Make sure to select absent students and click submit." };
       }
       if (cleanQuery.includes('log') || cleanQuery.includes('history')) {
-        if (cleanQuery.includes('crt')) {
-          setCurrentView('crtLog');
-          return { text: "Switched view to **CRT Attendance Log**!" };
-        }
         setCurrentView('dailyLog');
         return { text: "Switched view to **Attendance Log**! Here you can check historical reports." };
       }

@@ -134,7 +134,6 @@ smart/
 │   │   └── TeamLeadDashboardView.jsx   # Team Leader Attendance & Team Analytics View
 │   │
 │   ├── data/                           # Data Models & Initial Default Datasets
-│   │   ├── crtStudentData.js           # CRT Training Student Roster Data
 │   │   └── studentInfoData.js          # Core Student Master Dataset (56 Students, Teams, Contact & Backlogs)
 │   │
 │   ├── hooks/                          # Custom React Hooks
