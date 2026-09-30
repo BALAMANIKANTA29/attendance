@@ -212,6 +212,29 @@ const App = () => {
       .catch(error => console.warn('Failed to sync Tadicharla Rathnam Raju laptop status:', error));
   }, [studentInfoDataState, setStudentInfoDataState]);
 
+  React.useEffect(() => {
+    const targetRoll = '23B21A4524';
+    const targetStudent = studentInfoDataState.find(student => (student.roll || student.id || '').toUpperCase() === targetRoll);
+    if (!targetStudent || (targetStudent.backlogs === 0 && !targetStudent.s12 && !targetStudent.backlogSubs)) return;
+
+    setStudentInfoDataState(prev => prev.map(student => (
+      (student.roll || student.id || '').toUpperCase() === targetRoll
+        ? { ...student, backlogs: 0, backlogSubs: '', s11: '', s12: '', s21: '', s22: '', s31: '', s32: '' }
+        : student
+    )));
+
+    updateSupabaseStudent('k12aidha@example.com', targetRoll, {
+      backlogs: 0,
+      backlogSubs: '',
+      s11: '',
+      s12: '',
+      s21: '',
+      s22: '',
+      s31: '',
+      s32: ''
+    }).catch(error => console.warn('Failed to sync Kutchu Shiva Mani backlogs:', error));
+  }, [studentInfoDataState, setStudentInfoDataState]);
+
   // Default data migration logic has been removed.
   // Supabase is the single source of truth.
 
