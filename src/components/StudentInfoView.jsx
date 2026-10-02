@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Laptop, Search, Download, Mail, Hash, Users, Filter, Edit2, Save, X, Trash2, Plus, ArrowRight, MapPin } from 'lucide-react';
+import { Laptop, Search, Download, Mail, Hash, Users, Filter, Edit2, Save, X, Trash2, Plus, ArrowRight, MapPin, BookOpen } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { studentInfoData as defaultData, teams as defaultTeams } from '../data/studentInfoData';
 import { upsertSupabaseStudents, isSupabaseConfigured, updateSupabaseStudent } from '../lib/supabase';
@@ -139,6 +139,44 @@ const EditStudentModal = ({ student, teams, onSave, onClose, directAccess }) => 
                             <label className="block text-xs font-semibold text-gray-600 mb-1">Parent Contact 2</label>
                             <input value={form.p2} onChange={e => set('p2', e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 outline-none" />
+                        </div>
+
+                        {/* Backlogs Section */}
+                        <div className="sm:col-span-2">
+                            <div className="flex items-center gap-2 mb-3 mt-1">
+                                <BookOpen className="w-4 h-4 text-indigo-500" />
+                                <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Backlogs & Subjects</span>
+                                <div className="flex-1 h-px bg-indigo-100" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Total Backlogs</label>
+                            <input type="number" min="0" value={form.backlogs || 0} onChange={e => set('backlogs', parseInt(e.target.value) || 0)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 outline-none" />
+                        </div>
+                        <div className="sm:col-span-1">
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Backlog Subjects (All)</label>
+                            <input value={form.backlogSubs || ''} onChange={e => set('backlogSubs', e.target.value)}
+                                placeholder="e.g. M1, PHY, EG"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-400 outline-none" />
+                        </div>
+                        
+                        {/* Semester-wise Backlogs */}
+                        <div className="sm:col-span-2 mt-2">
+                            <label className="block text-xs font-semibold text-gray-600 mb-2">Semester-wise Backlog Subjects (Optional - e.g., "M1, PHY")</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {['s11', 's12', 's21', 's22', 's31', 's32', 's41', 's42'].map(sem => (
+                                    <div key={sem}>
+                                        <label className="block text-[10px] font-semibold text-gray-500 uppercase">{sem[1]}-{sem[2]} Sem</label>
+                                        <input 
+                                            value={form[sem] || ''} 
+                                            onChange={e => set(sem, e.target.value)}
+                                            placeholder="Subjects"
+                                            className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-indigo-400 outline-none" 
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         {/* Address Section */}

@@ -71,8 +71,7 @@ const App = () => {
     students:   false,
     backlogs:   false,
   });
-
-  const [studentsState, setStudentsState] = useLocalStorage('students', [], userEmail);
+  const [studentsState, setStudentsState] = useLocalStorage('students', defaultStudentInfoData.map(s => ({ id: s.roll, name: s.name, status: null })), userEmail);
 
 
 
@@ -161,7 +160,7 @@ const App = () => {
     semesterEndMonth: 6
   }, userEmail);
 
-  const [studentInfoDataState, setStudentInfoDataState] = useLocalStorage('studentInfoData', [], userEmail);
+  const [studentInfoDataState, setStudentInfoDataState] = useLocalStorage('studentInfoData', defaultStudentInfoData, userEmail);
 
   React.useEffect(() => {
     const targetRoll = '23B21A45B4';
