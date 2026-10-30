@@ -19,36 +19,22 @@ import { AdminDashboardView } from './components/AdminDashboardView';
 import { AnnouncementsView } from './components/AnnouncementsView';
 import { MaterialsView } from './components/MaterialsView';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { studentInfoData as defaultStudentInfoData } from './data/studentInfoData';
 import { updateSupabaseStudent } from './lib/supabase';
 
 export const sortStudentsByTeamOrder = (list) => {
   if (!Array.isArray(list)) return [];
-  const defaultIndexMap = new Map();
-  defaultStudentInfoData.forEach((s, idx) => {
-    if (s.roll) defaultIndexMap.set(String(s.roll).toUpperCase(), idx);
-  });
-
   return [...list].sort((a, b) => {
-    const rollA = String(a.roll || a.id || '').toUpperCase();
-    const rollB = String(b.roll || b.id || '').toUpperCase();
-
-    const idxA = defaultIndexMap.has(rollA) ? defaultIndexMap.get(rollA) : 999;
-    const idxB = defaultIndexMap.has(rollB) ? defaultIndexMap.get(rollB) : 999;
-
-    if (idxA !== idxB) {
-      return idxA - idxB;
-    }
-
     const teamNumA = parseInt(String(a.team || '').replace(/\D/g, '')) || 99;
     const teamNumB = parseInt(String(b.team || '').replace(/\D/g, '')) || 99;
     if (teamNumA !== teamNumB) return teamNumA - teamNumB;
 
-    return rollA.localeCompare(rollB);
+    const rollA = String(a.roll || a.id || '').toUpperCase();
+    const rollB = String(b.roll || b.id || '').toUpperCase();
+    return rollA.localeCompare(rollB, undefined, { numeric: true, sensitivity: 'base' });
   });
 };
 
-// Students will be loaded from the database via useLocalStorage sync
+// Students are loaded dynamically from Supabase DB
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -71,22 +57,11 @@ const App = () => {
     students:   false,
     backlogs:   false,
   });
-  const [studentsState, setStudentsState] = useLocalStorage('students', defaultStudentInfoData.map(s => ({ id: s.roll, name: s.name, status: null })), userEmail);
-
-
+  const [studentsState, setStudentsState] = useLocalStorage('students', [], userEmail);
 
   const [attendanceHistory, setAttendanceHistory] = useLocalStorage('attendanceHistory', {}, userEmail);
   const [lastSubmittedReport, setLastSubmittedReport] = useLocalStorage('lastSubmittedReport', null, userEmail);
-  const [announcements, setAnnouncements] = useLocalStorage('announcements', [
-    {
-      id: 'default-1',
-      title: 'Welcome to the Portal',
-      message: 'All students and parents are requested to review their profile information and fill in missing fields.',
-      category: 'info',
-      target: 'everyone',
-      date: new Date().toISOString()
-    }
-  ]);
+  const [announcements, setAnnouncements] = useLocalStorage('announcements', [], userEmail);
 
   // Migrate any legacy namespaced announcements into global announcements
   React.useEffect(() => {
@@ -160,60 +135,7 @@ const App = () => {
     semesterEndMonth: 6
   }, userEmail);
 
-  const [studentInfoDataState, setStudentInfoDataState] = useLocalStorage('studentInfoData', defaultStudentInfoData, userEmail);
-
-  React.useEffect(() => {
-    const targetRoll = '23B21A45B4';
-    const targetStudent = studentInfoDataState.find(student => (student.roll || student.id || '').toUpperCase() === targetRoll);
-    if (!targetStudent || targetStudent.team === 'TEAM-2') return;
-
-    setStudentInfoDataState(prev => prev.map(student => (
-      (student.roll || student.id || '').toUpperCase() === targetRoll
-        ? { ...student, team: 'TEAM-2' }
-        : student
-    )));
-
-    updateSupabaseStudent('k12aidha@example.com', targetRoll, { team: 'TEAM-2' })
-      .catch(error => console.warn('Failed to sync Vanama Akhil team assignment:', error));
-  }, [studentInfoDataState, setStudentInfoDataState]);
-
-  React.useEffect(() => {
-    const targetRoll = '236Q1A4521';
-    const targetStudent = studentInfoDataState.find(student => (student.roll || student.id || '').toUpperCase() === targetRoll);
-    if (!targetStudent || targetStudent.laptop === 'yes') return;
-
-    setStudentInfoDataState(prev => prev.map(student => (
-      (student.roll || student.id || '').toUpperCase() === targetRoll
-        ? { ...student, laptop: 'yes' }
-        : student
-    )));
-
-    updateSupabaseStudent('k12aidha@example.com', targetRoll, { laptop: 'yes' })
-      .catch(error => console.warn('Failed to sync Tadicharla Rathnam Raju laptop status:', error));
-  }, [studentInfoDataState, setStudentInfoDataState]);
-
-  React.useEffect(() => {
-    const targetRoll = '23B21A4524';
-    const targetStudent = studentInfoDataState.find(student => (student.roll || student.id || '').toUpperCase() === targetRoll);
-    if (!targetStudent || (targetStudent.backlogs === 0 && !targetStudent.s12 && !targetStudent.backlogSubs)) return;
-
-    setStudentInfoDataState(prev => prev.map(student => (
-      (student.roll || student.id || '').toUpperCase() === targetRoll
-        ? { ...student, backlogs: 0, backlogSubs: '', s11: '', s12: '', s21: '', s22: '', s31: '', s32: '' }
-        : student
-    )));
-
-    updateSupabaseStudent('k12aidha@example.com', targetRoll, {
-      backlogs: 0,
-      backlogSubs: '',
-      s11: '',
-      s12: '',
-      s21: '',
-      s22: '',
-      s31: '',
-      s32: ''
-    }).catch(error => console.warn('Failed to sync Kutchu Shiva Mani backlogs:', error));
-  }, [studentInfoDataState, setStudentInfoDataState]);
+  const [studentInfoDataState, setStudentInfoDataState] = useLocalStorage('studentInfoData', [], userEmail);
 
   // Default data migration logic has been removed.
   // Supabase is the single source of truth.
@@ -376,9 +298,15 @@ const App = () => {
     const roll = updatedStudent.roll || updatedStudent.id;
     if (!roll) return;
     
+    // Sync update directly to Supabase
+    const owner = userEmail || 'k12aidha@example.com';
+    updateSupabaseStudent(owner, roll, updatedStudent).catch(err => {
+      console.warn('[Supabase] Background student update:', err);
+    });
+
     // 1. Update studentInfoData
     setStudentInfoData(prev => {
-      const idx = prev.findIndex(s => s.roll.toUpperCase() === roll.toUpperCase());
+      const idx = prev.findIndex(s => (s.roll || s.id || '').toUpperCase() === roll.toUpperCase());
       if (idx === -1) return prev;
       const copy = [...prev];
       copy[idx] = { ...copy[idx], ...updatedStudent, roll };
@@ -387,7 +315,7 @@ const App = () => {
 
     // 2. Update students
     setStudents(prev => {
-      const idx = prev.findIndex(s => s.id.toUpperCase() === roll.toUpperCase());
+      const idx = prev.findIndex(s => (s.id || s.roll || '').toUpperCase() === roll.toUpperCase());
       if (idx === -1) return prev;
       const copy = [...prev];
       copy[idx] = { ...copy[idx], ...updatedStudent, id: roll };
@@ -699,7 +627,16 @@ const App = () => {
           />
         );
       case 'parentDetails':
-        return <ParentDetailsView parentDataOverrides={parentDataOverrides} setParentDataOverrides={setParentDataOverrides} directAccess={directAccess} />;
+        return (
+          <ParentDetailsView
+            students={studentInfoData}
+            onUpdateStudent={updateStudentInBothStates}
+            parentDataOverrides={parentDataOverrides}
+            setParentDataOverrides={setParentDataOverrides}
+            directAccess={directAccess}
+            userEmail={userEmail}
+          />
+        );
       case 'studentInfo':
         return (
           <StudentInfoView

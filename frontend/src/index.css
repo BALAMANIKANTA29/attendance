@@ -277,22 +277,6 @@ body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-
-  /* ── StudentAttendanceReport (modal) print ───────────────────── */
-  .student-report-print {
-    position: static !important;
-    background: white !important;
-    overflow: visible !important;
-    padding: 0 !important;
-  }
-
-  .student-report-print > div {
-    max-width: none !important;
-    max-height: none !important;
-    overflow: visible !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-  }
 }
 
 /* Smooth transitions */

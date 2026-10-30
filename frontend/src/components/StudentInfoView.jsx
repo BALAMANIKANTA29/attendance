@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Laptop, Search, Download, Mail, Hash, Users, Filter, Edit2, Save, X, Trash2, Plus, ArrowRight, MapPin, BookOpen } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { studentInfoData as defaultData, teams as defaultTeams } from '../data/studentInfoData';
 import { upsertSupabaseStudents, isSupabaseConfigured, updateSupabaseStudent } from '../lib/supabase';
 import { getLocalDateString } from '../utils/dateUtils';
 
@@ -245,7 +244,7 @@ export const StudentInfoView = ({
     onNavigateToClassMembers,
     filters,
 }) => {
-    const data = propData || defaultData;
+    const data = propData || [];
     const teams = useMemo(() => {
         const set = new Set(data.map(s => s.team).filter(Boolean));
         return Array.from(set).sort((a, b) => {

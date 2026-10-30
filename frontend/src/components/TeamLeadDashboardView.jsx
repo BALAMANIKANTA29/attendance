@@ -7,7 +7,6 @@ import {
 import * as XLSX from 'xlsx';
 import { MaterialsView } from './MaterialsView';
 import { getLocalDateString } from '../utils/dateUtils';
-import { studentInfoData as defaultStudentInfoData } from '../data/studentInfoData';
 
 const TEAM_COLORS = [
   'indigo', 'sky', 'blue', 'cyan', 'teal', 'emerald', 'green', 'lime', 'amber', 'orange', 'rose', 'pink'
@@ -36,15 +35,14 @@ export const TeamLeadDashboardView = ({
   const [editingStudent, setEditingStudent] = useState(null);
   const [editFormData, setEditFormData] = useState({});
 
-  // Helper to retrieve complete address details with fallback to default student data
+  // Helper to retrieve complete address details directly from student record
   const getStudentAddress = (s) => {
-    const def = defaultStudentInfoData.find(d => (d.roll || d.id || '').toUpperCase() === (s.roll || s.id || '').toUpperCase());
     return {
-      village: (s.village && String(s.village).trim() !== '') ? s.village : (def?.village || ''),
-      mandal: (s.mandal && String(s.mandal).trim() !== '') ? s.mandal : (def?.mandal || ''),
-      district: (s.district && String(s.district).trim() !== '') ? s.district : (def?.district || ''),
-      state: (s.state && String(s.state).trim() !== '') ? s.state : (def?.state || 'Andhra Pradesh'),
-      pincode: (s.pincode && String(s.pincode).trim() !== '') ? s.pincode : (def?.pincode || '')
+      village: s?.village || '',
+      mandal: s?.mandal || '',
+      district: s?.district || '',
+      state: s?.state || 'Andhra Pradesh',
+      pincode: s?.pincode || ''
     };
   };
 

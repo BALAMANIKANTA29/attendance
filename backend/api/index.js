@@ -20,7 +20,7 @@ import {
   fetchSupabaseSemesters,
   upsertSupabaseSemester,
   deleteSupabaseSemester
-} from '../src/lib/supabase.js';
+} from '../lib/supabase.js';
 
 const app = express();
 app.use(cors());
@@ -38,12 +38,6 @@ const defaultSemesters = [
 ];
 
 let defaultStudentInfoData = [];
-try {
-  const mod = await import('../src/data/studentInfoData.js');
-  defaultStudentInfoData = mod.studentInfoData;
-} catch (e) {
-  console.log('Fallback data import failed.');
-}
 
 const owners = ['k12aidha@example.com', '20056@example.com', 'bmk@example.com'];
 let students = {};
@@ -227,31 +221,39 @@ app.post('/api/auth/login', async (req, res) => {
   const id = credential.trim();
   const pass = password.trim();
 
-  if (id === 'BMK' && pass === 'Bala') {
-    return res.json({ success: true, role: 'admin', email: 'bmk@example.com', name: 'Super Admin' });
-  }
-
-  if ((id === '20056' || id.toUpperCase() === 'K12AIDHA') && (pass === '20056' || pass === 'k12AIDHA')) {
-    return res.json({ success: true, role: 'classAdmin', email: 'k12aidha@example.com', name: 'Class Admin' });
-  }
-
-  const teamMatch = id.toUpperCase().match(/^AIDHT([1-9]|1[0-2])$/);
-  if (teamMatch) {
-    const teamNum = teamMatch[1];
-    if (pass.toUpperCase() === id.toUpperCase()) {
-      return res.json({
-        success: true,
-        role: 'teamLead',
-        team: `TEAM-${teamNum}`,
-        teamNumber: parseInt(teamNum, 10),
-        email: `teamlead${teamNum}@aidh.edu`,
-        name: `Team ${teamNum} Leader`
-      });
-    }
-  }
-
   const idClean = id.toLowerCase();
   const passClean = pass.toLowerCase();
+
+  // 1. Authenticate against Supabase app_users (Admin, Class Admin, Team Leads)
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data: userSetting } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'app_users')
+        .limit(1);
+
+      const usersList = userSetting?.[0]?.value;
+      if (Array.isArray(usersList)) {
+        const foundUser = usersList.find(u => 
+          (u.id || '').toUpperCase() === id.toUpperCase() && 
+          (u.pass === pass || (u.pass || '').toLowerCase() === passClean)
+        );
+        if (foundUser) {
+          return res.json({
+            success: true,
+            role: foundUser.role,
+            email: foundUser.email,
+            name: foundUser.name,
+            team: foundUser.team,
+            teamNumber: foundUser.teamNumber
+          });
+        }
+      }
+    } catch (e) {
+      console.error('[Supabase] Auth app_users error:', e);
+    }
+  }
 
   if (isSupabaseConfigured && supabase) {
     try {
@@ -561,12 +563,18 @@ app.get('/api/courses', async (req, res) => {
 
 app.post('/api/courses', async (req, res) => {
   try {
-    const { code, name } = req.body;
+    const { code, name } = req.body || {};
+    if (!code || typeof code !== 'string' || !code.trim()) {
+      return res.status(400).json({ error: 'Course code is required' });
+    }
     const context = await getContextInfo(req);
     if (context.isStudent) return res.status(403).json({ error: 'Forbidden' });
 
+    const cleanCode = code.trim().toUpperCase();
+    const cleanName = (name && typeof name === 'string') ? name.trim() : cleanCode;
+
     if (isSupabaseConfigured) {
-      const ok = await upsertSupabaseCourse(context.ownerEmail, code.trim().toUpperCase(), (name || code).trim());
+      const ok = await upsertSupabaseCourse(context.ownerEmail, cleanCode, cleanName);
       if (ok) return res.json({ success: true });
     }
 
@@ -620,12 +628,18 @@ app.get('/api/semesters', async (req, res) => {
 
 app.post('/api/semesters', async (req, res) => {
   try {
-    const { key, label } = req.body;
+    const { key, label } = req.body || {};
+    if (!key || typeof key !== 'string' || !key.trim() || !label || typeof label !== 'string' || !label.trim()) {
+      return res.status(400).json({ error: 'Semester key and label are required' });
+    }
     const context = await getContextInfo(req);
     if (context.isStudent) return res.status(403).json({ error: 'Forbidden' });
 
+    const cleanKey = key.trim().toLowerCase();
+    const cleanLabel = label.trim();
+
     if (isSupabaseConfigured) {
-      const ok = await upsertSupabaseSemester(context.ownerEmail, key.trim(), label.trim());
+      const ok = await upsertSupabaseSemester(context.ownerEmail, cleanKey, cleanLabel);
       if (ok) return res.json({ success: true });
     }
 
