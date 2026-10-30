@@ -26,6 +26,22 @@ const app = express();
 app.use(cors());
 app.use(express.json({ strict: false }));
 
+// Normalize URL path across Vercel serverless functions and local environments
+app.use((req, res, next) => {
+  const matchedPath = req.headers['x-matched-path'] || req.originalUrl || req.url || '';
+  if (matchedPath && matchedPath.startsWith('/api/') && !req.url.startsWith('/api/')) {
+    req.url = matchedPath;
+  } else if (!req.url.startsWith('/api')) {
+    req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+  }
+  next();
+});
+
+// Health check endpoint
+app.get(['/api', '/api/health', '/api/status'], (req, res) => {
+  res.json({ status: 'ok', server: 'attendance-portal-api', time: new Date().toISOString() });
+});
+
 const db = null; // SQLite replaced by Supabase / in-memory store
 
 const defaultSemesters = [
